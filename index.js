@@ -309,5 +309,15 @@ class CanvasApi {
       throw strippedError
     })
   }
+  /**
+   * Stores custom data on a user in Canvas
+   * @param {object} customData - An Object containing an ns property and a data property with a subscoped value object.
+   * @param {string} id - The Canvas ID for the affected user.
+   */
+  storeCustomData (customData, id) {
+    log.info(`Storing custom data ${JSON.stringify(customData)} on user with id ${id} in canvas`)
+    return this.requestCanvas(`users/${id}/custom_data`, 'PUT', customData)
+  }
+
 }
 module.exports = CanvasApi

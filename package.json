@@ -10,7 +10,7 @@
     "build": "npm test"
   },
   "exports": {
-    ".": "./index.js"
+    ".": "./lib/index.js"
   },
   "repository": {
     "type": "git",

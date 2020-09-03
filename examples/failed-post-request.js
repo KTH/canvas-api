@@ -1,5 +1,5 @@
-require('dotenv').config()
-const Canvas = require('../index')
+import './env.js'
+import Canvas from '@kth/canvas-api'
 
 async function start () {
   console.log(

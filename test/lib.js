@@ -1,5 +1,5 @@
-const test = require('ava')
-const augmentGenerator = require('../lib/augmentGenerator')
+import test from 'ava'
+import augmentGenerator from '../lib/augmentGenerator.js'
 
 test('augmentGenerator does not mutate the original generator', t => {
   async function * gen () {

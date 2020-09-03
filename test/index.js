@@ -1,9 +1,8 @@
-const test = require('ava')
-const createTestServer = require('create-test-server')
-const fs = require('fs')
-const tempy = require('tempy')
-
-const Canvas = require('../index')
+import test from 'ava'
+import createTestServer from 'create-test-server'
+import fs from 'fs'
+import tempy from 'tempy'
+import Canvas from '@kth/canvas-api'
 
 test('Token is correctly stripped', async t => {
   t.plan(1)

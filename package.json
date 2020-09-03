@@ -10,8 +10,7 @@
     "build": "npm test"
   },
   "exports": {
-    "require": "./index.js",
-    "import": "./esm/index.mjs"
+    ".": "./index.js"
   },
   "repository": {
     "type": "git",

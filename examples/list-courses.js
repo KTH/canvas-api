@@ -1,6 +1,6 @@
-require('dotenv').config()
-const Canvas = require('../index')
-const ora = require('ora')
+import './env.js'
+import Canvas from '@kth/canvas-api'
+import ora from 'ora'
 
 async function start () {
   console.log(

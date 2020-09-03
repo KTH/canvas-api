@@ -17,7 +17,7 @@ async function start () {
   const spinner = ora(`Getting courses... 0/${limit}`).start()
   try {
     let count = 0
-    for await (const course of canvas.list('/accounts/1/courses')) {
+    for await (const course of canvas.list('accounts/1/courses')) {
       count++
       if (count >= limit) {
         break
@@ -27,7 +27,7 @@ async function start () {
     spinner.stop()
     console.log('List through 300 courses complete')
   } catch (err) {
-    spinner.stop()
+    spinner.stopAndPersist()
     console.error(err)
   }
 }

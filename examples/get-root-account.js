@@ -11,7 +11,7 @@ async function start () {
   console.log('Making a GET request to /accounts/1')
   const canvas = Canvas(process.env.CANVAS_API_URL, process.env.CANVAS_API_TOKEN)
 
-  const { body } = await canvas.get('/accounts/1')
+  const { body } = await canvas.get('accounts/1')
   console.log('Showing response body...')
   console.log(body)
 }

@@ -9,7 +9,7 @@ test('Token is correctly stripped', async t => {
   const canvas = Canvas('https://kth.test.instructure.com/api/v1', 'My token')
 
   try {
-    await canvas.get('/accounts')
+    await canvas.get('accounts')
   } catch (err) {
     const error = JSON.stringify(err)
     t.notRegex(error, /My token/)
@@ -22,13 +22,9 @@ test('URLs are correctly "resolved"', async t => {
   server.get('/api/v1/courses/1', { foo: 'bar' })
 
   const urls = [
-    { base: server.url, end: '/index' },
     { base: server.url, end: 'index' },
-    { base: `${server.url}/`, end: '/index' },
     { base: `${server.url}/`, end: 'index' },
-    { base: `${server.url}/api/v1`, end: '/courses/1' },
     { base: `${server.url}/api/v1`, end: 'courses/1' },
-    { base: `${server.url}/api/v1/`, end: '/courses/1' },
     { base: `${server.url}/api/v1/`, end: 'courses/1' }
   ]
 
@@ -51,7 +47,7 @@ test('List returns a correct iterable', async t => {
   const canvas = Canvas(server.url, '')
   const result = []
 
-  for await (const e of canvas.list('/something')) {
+  for await (const e of canvas.list('something')) {
     result.push(e)
   }
 
@@ -68,7 +64,7 @@ test('List returns an Augmented iterable', async t => {
   server.get('/something_else', [4, 5])
 
   const canvas = Canvas(server.url, '')
-  const result = await canvas.list('/something').toArray()
+  const result = await canvas.list('something').toArray()
 
   t.deepEqual(result, [1, 2, 3, 4, 5])
 })
@@ -84,7 +80,7 @@ test('List ignores non-"rel=next" link headers', async t => {
   const canvas = Canvas(server.url, '')
   const result = []
 
-  for await (const e of canvas.list('/something')) {
+  for await (const e of canvas.list('something')) {
     result.push(e)
   }
   t.deepEqual(result, [1])
@@ -107,7 +103,7 @@ test('List can handle pagination urls with query strings', async t => {
 
   const canvas = Canvas(server.url, '')
 
-  const it = canvas.list('/something?with=query_string')
+  const it = canvas.list('something?with=query_string')
   await it.next()
   const result = await it.next()
 
@@ -129,7 +125,7 @@ test('sendSis returns a parsed JSON object upon success', async t => {
   const canvas = Canvas(server.url, '')
   const tmp = tempy.file()
   fs.writeFileSync(tmp, 'hello world')
-  const response = await canvas.sendSis('/file', tmp)
+  const response = await canvas.sendSis('file', tmp)
   t.deepEqual(response.body, { key: 'value' })
 })
 
@@ -141,7 +137,7 @@ test('List throws a descriptive error if the endpoint response is not an array',
   })
 
   const canvas = Canvas(server.url, '')
-  const it = canvas.list('/not-a-list')
+  const it = canvas.list('not-a-list')
 
   await t.throwsAsync(() => it.next(), { name: 'ValidationError' })
 })

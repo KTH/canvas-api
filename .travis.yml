@@ -1,8 +1,8 @@
 language: node_js
 node_js:
   - "node"
-  - "lts/*"
-  - "10"
-  - "12"
+  # LTS not supported until v14 becomes LTS ;)
+  # - "lts/*"
+  - "14"
 script:
   - npm test

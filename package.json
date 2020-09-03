@@ -3,6 +3,7 @@
   "version": "2.1.2",
   "description": " Functions for communicating with Canvas LMS",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "format": "standard --fix",
     "test": "standard && ava",

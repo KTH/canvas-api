@@ -1,14 +1,14 @@
-const got = require('got')
-const queryString = require('query-string')
-const augmentGenerator = require('./lib/augmentGenerator')
-const FormData = require('form-data')
-const fs = require('fs')
-const Joi = require('@hapi/joi')
-const debug = require('debug')('canvas-api')
+import got from 'got'
+import queryString from 'query-string'
+import augmentGenerator from './lib/augmentGenerator.js'
+import FormData from 'form-data'
+import fs from 'fs'
+import Joi from '@hapi/joi'
+import debuglib from 'debug'
+const debug = debuglib.debug('canvas-api')
 
 function removeToken (err) {
   delete err.gotOptions
-  delete err.response
   return err
 }
 
@@ -19,7 +19,7 @@ function getNextUrl (linkHeader) {
   return url && url[1]
 }
 
-module.exports = (apiUrl, apiKey, options = {}) => {
+export default function Canvas (apiUrl, apiKey, options = {}) {
   if (options.log) {
     process.emitWarning('The "log" option is deprecated. Use DEBUG=canvas-api environment variable to enable debugging (more detailed)', 'DeprecationWarning')
   }

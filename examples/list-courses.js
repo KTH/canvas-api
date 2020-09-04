@@ -1,14 +1,9 @@
-import './env.js'
 import Canvas from '@kth/canvas-api'
 import ora from 'ora'
+import check from './check-env.js'
 
 async function start () {
-  console.log(
-    'Checking environmental variables...\n' +
-    `- CANVAS_API_URL: ${process.env.CANVAS_API_URL}\n` +
-    `- CANVAS_API_TOKEN: ${process.env.CANVAS_API_TOKEN ? '<not showing>' : 'not set'}`
-  )
-  console.log()
+  check()
   console.log('Making paginated GET requests to /accounts/1/courses')
   console.log('Stop with Ctrl+C')
   const limit = 300

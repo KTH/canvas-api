@@ -2,16 +2,14 @@
   "name": "@kth/canvas-api",
   "version": "2.1.2",
   "description": " Functions for communicating with Canvas LMS",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "format": "standard --fix",
     "test": "standard && ava",
     "build": "npm test"
   },
-  "exports": {
-    ".": "./lib/index.js"
-  },
+  "exports": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/kth/canvas-api"

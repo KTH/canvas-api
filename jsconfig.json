@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+      "paths": {
+        "@kth/canvas-api": ["lib/index"]
+      },
+  },
+  "include": [
+    "lib/**/*",
+    "examples/**/*",
+    "test/**/*"
+  ]
+}

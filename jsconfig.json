@@ -2,11 +2,11 @@
   "compilerOptions": {
     "baseUrl": ".",
       "paths": {
-        "@kth/canvas-api": ["lib/index"]
+        "@kth/canvas-api": ["./dist/index.js", "./src/index.js"]
       },
   },
   "include": [
-    "lib/**/*",
+    "src/**/*",
     "examples/**/*",
     "test/**/*"
   ]

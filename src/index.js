@@ -1,6 +1,6 @@
 import got from 'got'
 import queryString from 'query-string'
-import augmentGenerator from './augmentGenerator.js'
+import augmentGenerator from './augment-generator.js'
 import FormData from 'form-data'
 import fs from 'fs'
 import Joi from '@hapi/joi'

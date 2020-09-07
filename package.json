@@ -8,7 +8,9 @@
     "test": "standard && ava",
     "build": "npm test"
   },
-  "exports": "./lib/index.js",
+  "exports": {
+    ".": ["./dist/index.js", "./src/index.js"]
+  },
   "types": "./lib/index.d.ts",
   "repository": {
     "type": "git",

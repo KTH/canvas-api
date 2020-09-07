@@ -1,5 +1,5 @@
 import test from 'ava'
-import augmentGenerator from './augment-generator.js/index.js'
+import augmentGenerator from './augment-generator.js'
 
 test('augmentGenerator does not mutate the original generator', t => {
   async function * gen () {

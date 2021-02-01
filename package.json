@@ -9,7 +9,7 @@
     "build": "npm test"
   },
   "exports": {
-    ".": ["./dist/index.js", "./src/index.js"]
+    ".": ["./src/index.js"]
   },
   "types": "./lib/index.d.ts",
   "repository": {

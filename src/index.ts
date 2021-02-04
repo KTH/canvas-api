@@ -2,7 +2,7 @@ import got, { ExtendOptions, Got, Method } from "got";
 import queryString from "qs";
 import fs from "fs";
 import FormData from "form-data";
-import { augmentGenerator } from "./utils";
+import { augmentGenerator } from "./utils.js";
 
 function getNextUrl(linkHeader: string) {
   const next = linkHeader

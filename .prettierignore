@@ -3,6 +3,7 @@ build-information.js
 ## From here on, everything is a copy from .gitignore
 node_modules
 .env
+dist
 
 # VS Code specific
 .vscode

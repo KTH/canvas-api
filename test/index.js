@@ -3,7 +3,7 @@ const createTestServer = require("create-test-server");
 const fs = require("fs");
 const tempy = require("tempy");
 
-const Canvas = require("..");
+const Canvas = require("../src");
 
 test("Token is correctly stripped", async (t) => {
   t.plan(1);

@@ -14,7 +14,6 @@ function getNextUrl(linkHeader) {
 }
 
 export default class CanvasAPI {
-
   constructor(apiUrl, apiToken, options = {}) {
     this.canvasClient = got.extend({
       prefixUrl: apiUrl,
@@ -40,11 +39,7 @@ export default class CanvasAPI {
     });
   }
 
-  postWithAttachment(
-    endpoint,
-    attachment,
-    body = {}
-  ) {
+  postWithAttachment(endpoint, attachment, body = {}) {
     const form = new FormData();
 
     for (const key in body) {
@@ -68,10 +63,14 @@ export default class CanvasAPI {
       arrayFormat: "brackets",
     });
 
-    const first = await this.canvasClient.get<T>(endpoint, {
-      searchParams: parameters,
-      ...options,
-    });
+    const first =
+      (await this.canvasClient.get) <
+      T >
+      (endpoint,
+      {
+        searchParams: parameters,
+        ...options,
+      });
 
     yield first;
 

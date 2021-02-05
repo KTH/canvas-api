@@ -11,8 +11,14 @@
     "build": "npm test"
   },
   "exports": {
-    "require": "./src/index.js",
-    "import": "./esm/index.mjs"
+    ".": {
+      "import": "./src/index.js",
+      "require": "./cjs/index.cjs"
+    },
+    "./singleton": {
+      "import": "./src/singleton.js",
+      "require": "./cjs/singleton.cjs"
+    }
   },
   "repository": {
     "type": "git",

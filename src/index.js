@@ -63,14 +63,10 @@ export default class CanvasAPI {
       arrayFormat: "brackets",
     });
 
-    const first =
-      (await this.canvasClient.get) <
-      T >
-      (endpoint,
-      {
-        searchParams: parameters,
-        ...options,
-      });
+    const first = await this.canvasClient.get(endpoint, {
+      searchParams: parameters,
+      ...options,
+    });
 
     yield first;
 

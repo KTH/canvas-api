@@ -3,6 +3,7 @@
   "version": "2.2.0",
   "description": " Functions for communicating with Canvas LMS",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "format": "prettier --write .",
     "test": "npm run test:lint && ava",

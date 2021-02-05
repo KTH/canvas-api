@@ -1,6 +1,6 @@
-require("dotenv").config();
-const Canvas = require("../index");
-const ora = require("ora");
+import "dotenv/config.js";
+import Canvas from "../src/index.js"
+import ora from "ora"
 
 async function start() {
   console.log(
@@ -14,7 +14,7 @@ async function start() {
   console.log("Making paginated GET requests to /accounts/1/courses");
   console.log("Stop with Ctrl+C");
   const limit = 300;
-  const canvas = Canvas(
+  const canvas = new Canvas(
     process.env.CANVAS_API_URL,
     process.env.CANVAS_API_TOKEN
   );
@@ -22,7 +22,7 @@ async function start() {
   const spinner = ora(`Getting courses... 0/${limit}`).start();
   try {
     let count = 0;
-    for await (const course of canvas.list("/accounts/1/courses")) {
+    for await (const course of canvas.list("accounts/1/courses")) {
       count++;
       if (count >= limit) {
         break;

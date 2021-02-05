@@ -18,7 +18,7 @@ export default class CanvasAPI {
     this.canvasClient = got.extend({
       prefixUrl: apiUrl,
       headers: {
-        Authentication: `Bearer ${apiToken}`,
+        Authorization: `Bearer ${apiToken}`,
       },
       responseType: "json",
       ...options,

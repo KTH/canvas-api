@@ -1,16 +1,8 @@
-const got = require("got");
-const queryString = require("query-string");
-const augmentGenerator = require("./augmentGenerator");
-const FormData = require("form-data");
-const fs = require("fs");
-const Joi = require("@hapi/joi");
-const debug = require("debug")("canvas-api");
-
-function removeToken(err) {
-  delete err.gotOptions;
-  delete err.response;
-  return err;
-}
+import got from "got";
+import queryString from "qs";
+import fs from "fs";
+import FormData from "form-data";
+import { augmentGenerator } from "./utils.js";
 
 function getNextUrl(linkHeader) {
   const next = linkHeader
@@ -21,166 +13,100 @@ function getNextUrl(linkHeader) {
   return url && url[1];
 }
 
-function emitLeadingSlashWarning(endpoint) {
-  if (endpoint.startsWith("/")) {
-    process.emitWarning(
-      `URLs with leading slash are deprecated. Replace '${endpoint}' with '${endpoint.slice(
-        1
-      )}'`
-    );
-  }
-}
+export default class CanvasAPI {
 
-module.exports = (apiUrl, apiKey, options = {}) => {
-  if (options.log) {
-    process.emitWarning(
-      'The "log" option is deprecated. Use DEBUG=canvas-api environment variable to enable debugging (more detailed)',
-      "DeprecationWarning"
-    );
+  constructor(apiUrl, apiToken, options = {}) {
+    this.canvasClient = got.extend({
+      prefixUrl: apiUrl,
+      headers: {
+        Authentication: `Bearer ${apiToken}`,
+      },
+      responseType: "json",
+      ...options,
+    });
   }
 
-  const log = options.log || (() => {});
-
-  const canvasGot = got.extend({
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    json: true,
-  });
-
-  async function requestUrl(endpoint, method = "GET", body = {}, options = {}) {
-    log(`Request ${method} ${endpoint}`);
-    debug(`requestUrl() ${method} ${endpoint}`);
-    emitLeadingSlashWarning(endpoint);
-
+  requestUrl(endpoint, method, body = {}, options = {}) {
     if (method === "GET") {
-      process.emitWarning(
-        'requestUrl() with "GET" methods is deprecated. Use get(), list() or listPaginated() instead.',
-        "DeprecationWarning"
+      throw new Error(
+        "requestUrl() cannot be used for GET methods. Use 'get', 'list' or 'listPaginated'"
       );
     }
 
-    try {
-      const result = await canvasGot({
-        baseUrl: apiUrl,
-        body: body,
-        url: endpoint,
-        method,
-        ...options,
-      });
-
-      debug(`Successful request ${method} ${endpoint} - returning`);
-      log(`Response from ${method} ${endpoint}`);
-      return result;
-    } catch (err) {
-      debug(`Error in requestUrl() ${err.name}`);
-      throw removeToken(err);
-    }
+    return this.canvasClient(endpoint, {
+      json: body,
+      method,
+      ...options,
+    });
   }
 
-  async function get(endpoint, queryParams = {}) {
-    emitLeadingSlashWarning(endpoint);
-    debug(`get() ${endpoint}`);
-    try {
-      const result = await canvasGot({
-        url: endpoint,
-        baseUrl: apiUrl,
-        method: "GET",
-        query: queryString.stringify(queryParams, { arrayFormat: "bracket" }),
-      });
-      debug(`Response from get() ${endpoint}`);
-      return result;
-    } catch (err) {
-      debug(`Error in get() ${err.name}`);
-      throw removeToken(err);
-    }
-  }
-
-  async function* list(endpoint, queryParams = {}) {
-    emitLeadingSlashWarning(endpoint);
-    debug(`list() ${endpoint}`);
-
-    for await (const page of listPaginated(endpoint, queryParams)) {
-      Joi.assert(
-        page,
-        Joi.array(),
-        `The function ".list()" should be used with endpoints that return arrays. Use "get()" instead with the endpoint ${endpoint}.`
-      );
-
-      log(`list() ${endpoint}. Traversing a page...`);
-      debug("Traversing a page");
-
-      for (const element of page) {
-        yield element;
-      }
-    }
-  }
-
-  async function* listPaginated(endpoint, queryParams = {}) {
-    emitLeadingSlashWarning(endpoint);
-    debug(`listPaginated() ${endpoint}`);
-    try {
-      const query = queryString.stringify(queryParams, {
-        arrayFormat: "bracket",
-      });
-      const first = await canvasGot.get({
-        query,
-        url: endpoint,
-        baseUrl: apiUrl,
-      });
-
-      debug(`listPaginated() ${endpoint} - Yielding first page`);
-
-      yield first.body;
-      let url =
-        first.headers && first.headers.link && getNextUrl(first.headers.link);
-
-      while (url) {
-        log(`Request GET ${url}`);
-        debug(`listPaginated() ${endpoint} - Requesting ${url}`);
-
-        const response = await canvasGot.get({ url });
-
-        log(`Response from GET ${url}`);
-        yield response.body;
-        url =
-          response.headers &&
-          response.headers.link &&
-          getNextUrl(response.headers.link);
-      }
-    } catch (err) {
-      throw removeToken(err);
-    }
-  }
-
-  async function sendSis(endpoint, attachment, body = {}) {
-    emitLeadingSlashWarning(endpoint);
+  postWithAttachment(
+    endpoint,
+    attachment,
+    body = {}
+  ) {
     const form = new FormData();
 
     for (const key in body) {
       form.append(key, body[key]);
     }
-
     form.append("attachment", fs.createReadStream(attachment));
 
-    return canvasGot
-      .post({
-        url: endpoint,
-        baseUrl: apiUrl,
-        json: false,
-        body: form,
-      })
-      .then((response) => {
-        response.body = JSON.parse(response.body);
-        return response;
-      });
+    return this.canvasClient.post(endpoint, { body: form });
   }
 
-  return {
-    requestUrl,
-    get,
-    list: augmentGenerator(list),
-    listPaginated: augmentGenerator(listPaginated),
-    sendSis,
-  };
-};
+  get(endpoint, queryParams = {}) {
+    return this.canvasClient.get(endpoint, {
+      searchParams: queryString.stringify(queryParams, {
+        arrayFormat: "brackets",
+      }),
+    });
+  }
+
+  async *_listPaginated(endpoint, queryParams = {}, options = {}) {
+    const parameters = queryString.stringify(queryParams, {
+      arrayFormat: "brackets",
+    });
+
+    const first = await this.canvasClient.get<T>(endpoint, {
+      searchParams: parameters,
+      ...options,
+    });
+
+    yield first;
+
+    let url = getNextUrl(first.headers?.link);
+
+    while (url) {
+      const response = await this.canvasClient.get(url, {
+        prefixUrl: "",
+      });
+
+      yield response;
+
+      url = getNextUrl(response.headers?.link);
+    }
+  }
+
+  listPaginated(endpoint, queryParams = {}, options = {}) {
+    return augmentGenerator(
+      this._listPaginated(endpoint, queryParams, options)
+    );
+  }
+
+  async *_list(endpoint, queryParams = {}, options = {}) {
+    for await (const page of this.listPaginated(
+      endpoint,
+      queryParams,
+      options
+    )) {
+      for (const element of page.body) {
+        yield element;
+      }
+    }
+  }
+
+  list(endpoint, queryParams = {}, options = {}) {
+    return augmentGenerator(this._list(endpoint, queryParams, options));
+  }
+}

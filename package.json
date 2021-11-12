@@ -9,7 +9,8 @@
     "test": "npm run test:lint && jest",
     "test:lint": "eslint src && prettier --check .",
     "build": "tsc",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "postinstall": "echo 'Warning! The TS-release of 3.x is deprecated and won't be officially released. Use 4.x instead, there is a pre-release available that is API-compatible to this.'"
   },
   "files": [
     "dist"

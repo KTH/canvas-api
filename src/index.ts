@@ -15,6 +15,10 @@ import type { SisImportResponse } from "./sisImport";
 
 import { extendGenerator, ExtendedGenerator, CanvasApiError } from "./utils";
 
+console.warn(
+  "Warning! The TS-release of 3.x is deprecated and won't be officially released. Use 4.x instead, there is a pre-release available that is API-compatible to this."
+);
+
 function getNextUrl(linkHeader: string | string[]) {
   if (typeof linkHeader === "string") {
     const next =

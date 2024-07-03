@@ -1,4 +1,5 @@
 import { Dispatcher } from "undici";
+import { CanvasApiResponse } from "./canvasApi";
 /** Super-class for CanvasApi library */
 export class CanvasApiError extends Error {
   constructor(message: string) {
@@ -11,14 +12,51 @@ export class CanvasApiError extends Error {
  * Thrown when Canvas has returned a non-200 response
  */
 export class CanvasApiResponseError extends CanvasApiError {
-  // TODO: spec extra fields
+  response: CanvasApiResponse;
+
+  /**
+   * Note: this constructor does not parse the body in `response`.
+   * Use {@link CanvasAPIResponseError.fromResponse} instead
+   */
   constructor(response: Dispatcher.ResponseData) {
     super("Canvas API response error");
+    this.name = "CanvasApiResponseError";
+    this.response = {
+      statusCode: response.statusCode,
+      headers: response.headers,
+      json: null,
+      text: null,
+    };
+  }
 
-    // TODO: check response data
+  /**
+   * Returns a `CanvasApiResponseError` with a parsed response
+   */
+  static async fromResponse(response: Dispatcher.ResponseData) {
+    const error = new CanvasApiResponseError(response);
+    const text = await response.body.text();
+
+    try {
+      // TODO: find a good "message" and override `error.message`
+      const json = await JSON.parse(text);
+      error.response.text = null;
+      error.response.json = json;
+    } catch (err) {
+      error.response.text = text;
+      error.response.json = null;
+    }
+
+    return error;
   }
 }
 
+/**
+ * Thrown when there was some error before reaching Canvas
+ */
 export class CanvasApiRequestError extends CanvasApiError {
-  // TODO
+  constructor() {
+    // TODO
+    super("Canvas API request error");
+    this.name = "CanvasApiRequestError";
+  }
 }

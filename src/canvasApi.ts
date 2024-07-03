@@ -19,11 +19,11 @@ async function handleRequest(
   responsePromise: Promise<Dispatcher.ResponseData>
 ): Promise<CanvasApiResponse> {
   const response = await responsePromise.catch(() => {
-    throw new CanvasApiRequestError("");
+    throw new CanvasApiRequestError();
   });
 
   if (response.statusCode >= 300) {
-    throw new CanvasApiResponseError(response);
+    throw await CanvasApiResponseError.fromResponse(response);
   }
 
   const text = await response.body.text();

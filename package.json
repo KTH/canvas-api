@@ -2,8 +2,13 @@
   "name": "@kth/canvas-api",
   "version": "4.2.6",
   "description": " Functions for communicating with Canvas LMS",
+  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./schemas": "./dist/schemas.js"
+  },
   "scripts": {
     "format": "eslint && prettier --write .",
     "test": "npm run build && npm run test:lint && jest",

@@ -36,6 +36,15 @@ export class CanvasApiResponseError extends CanvasApiError {
     const error = new CanvasApiResponseError(response);
     const text = await response.body.text();
 
+    // Override the default error message
+    switch (response.statusCode) {
+      case 401:
+        error.message = "401 Unauthorized";
+        break;
+      default:
+        error.message += response.statusCode;
+    }
+
     try {
       // TODO: find a good "message" and override `error.message`
       const json = await JSON.parse(text);

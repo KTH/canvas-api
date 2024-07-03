@@ -2,8 +2,13 @@
 import { CanvasApi } from "@kth/canvas-api";
 
 describe("Simple requests", () => {
-  it("Should fail if no token is given", () => {
-    const client = new CanvasApi(process.env.CANVAS_API_ROOT!, "");
-    // TODO
+  it("Should fail if no token is given", async () => {
+    const client = new CanvasApi(
+      "https://kth.test.instructure.com/api/v1/",
+      ""
+    );
+
+    expect(() => client.get("accounts/1")).rejects.toThrow();
+    // await client.get("accounts/1").catch((err) => );
   });
 });

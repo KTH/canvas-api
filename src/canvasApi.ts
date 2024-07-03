@@ -62,7 +62,13 @@ export class CanvasApi {
 
   async get(endpoint: string): Promise<CanvasApiResponse> {
     const url = new URL(endpoint, this.apiUrl);
-    return handleRequest(request(url));
+    return handleRequest(
+      request(url, {
+        headers: {
+          authorization: `Bearer ${this.token}`,
+        },
+      })
+    );
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {

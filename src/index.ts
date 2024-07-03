@@ -1,2 +1,6 @@
 export { CanvasApi } from "./canvasApi";
-export { CanvasApiError } from "./canvasApiError";
+export {
+  CanvasApiError,
+  CanvasApiResponseError,
+  CanvasApiRequestError,
+} from "./canvasApiError";

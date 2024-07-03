@@ -52,8 +52,17 @@ export class CanvasApi {
   token: string;
 
   constructor(apiUrl: string, token: string) {
+    // For correct parsing, check that `apiUrl` contains a trailing slash
+    if (!apiUrl.endsWith("/")) {
+      throw new TypeError("Parameter `apiUrl` must end with trailing slash");
+    }
     this.apiUrl = new URL(apiUrl);
     this.token = token;
+  }
+
+  async get(endpoint: string): Promise<CanvasApiResponse> {
+    const url = new URL(endpoint, this.apiUrl);
+    return handleRequest(request(url));
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {

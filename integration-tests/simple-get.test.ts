@@ -8,6 +8,15 @@ describe("Simple requests", () => {
     expect(() => client.get("accounts/1")).rejects.toThrowError(
       CanvasApiResponseError
     );
-    // await client.get("accounts/1").catch((err) => );
+  });
+
+  it("Should not fail if token is given", async () => {
+    const client = new CanvasApi(
+      process.env.CANVAS_API_URL!,
+      process.env.CANVAS_API_TOKEN!
+    );
+    const response = await client.get("accounts/1");
+
+    expect(response).toMatchInlineSnapshot();
   });
 });

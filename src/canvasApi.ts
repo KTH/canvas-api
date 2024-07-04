@@ -5,6 +5,7 @@ import {
   CanvasApiRequestError,
   CanvasApiResponseError,
 } from "./canvasApiError";
+import { ExtendedGenerator } from "./extendedGenerator";
 
 export type CanvasApiResponseBody =
   | { json: null; text: string }
@@ -15,10 +16,7 @@ export type CanvasApiResponse = {
   headers: Record<string, string | string[] | undefined>;
 } & CanvasApiResponseBody;
 
-export type CanvasApiQueryParameters = Record<
-  string,
-  string | number | (string | number)[]
->;
+export type QueryParams = Record<string, string | number | (string | number)[]>;
 
 /** Converts an object to something that can be passed as body in a request */
 export function normalizeBody(obj: unknown) {
@@ -37,6 +35,19 @@ export function normalizeBody(obj: unknown) {
   }
 }
 
+/** Get the "next" value in a link header */
+export function getNextUrl(linkHeader: string | string[]) {
+  if (typeof linkHeader === "string") {
+    const next =
+      linkHeader.split(",").find((l) => l.search(/rel="next"$/) !== -1) || null;
+
+    const url = next && next.match(/<(.*?)>/);
+    return url && url[1];
+  }
+
+  return null;
+}
+
 /**
  * Return query parameters in Canvas accepted format (i.e. "bracket" format)
  *
@@ -47,7 +58,7 @@ export function normalizeBody(obj: unknown) {
  *
  * ```
  */
-export function stringifyQueryParameters(parameters: CanvasApiQueryParameters) {
+export function stringifyQueryParameters(parameters: QueryParams) {
   const keyValues: string[] = [];
 
   for (const key in parameters) {
@@ -81,7 +92,7 @@ export class CanvasApi {
   private async _request(
     endpoint: string,
     method: Dispatcher.HttpMethod,
-    params?: CanvasApiQueryParameters,
+    params?: QueryParams,
     body?: unknown
   ) {
     let url = new URL(endpoint, this.apiUrl).toString();
@@ -128,9 +139,43 @@ export class CanvasApi {
   /** Performs a GET request to a given endpoint */
   async get(
     endpoint: string,
-    queryParams?: CanvasApiQueryParameters
+    queryParams: QueryParams = {}
   ): Promise<CanvasApiResponse> {
     return this._request(endpoint, "GET", queryParams);
+  }
+
+  listPages(endpoint: string, queryParams: QueryParams = {}) {
+    const t = this;
+    async function* generator() {
+      const first = await t._request(endpoint, "GET", queryParams);
+
+      yield first;
+      let url = first.headers.link && getNextUrl(first.headers.link);
+
+      while (url) {
+        const response = await t._request(url, "GET");
+        yield response;
+        url = response.headers.link && getNextUrl(response.headers.link);
+      }
+    }
+
+    return new ExtendedGenerator(generator());
+  }
+
+  listItems(endpoint: string, queryParams: QueryParams = {}) {
+    const t = this;
+    async function* generator() {
+      for await (const page of t.listPages(endpoint, queryParams)) {
+        if (!Array.isArray(page.json)) {
+          throw new Error();
+        }
+
+        for (const element of page.json) {
+          yield element;
+        }
+      }
+    }
+    return new ExtendedGenerator(generator());
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {

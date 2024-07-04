@@ -15,35 +15,20 @@ export type CanvasApiResponse = {
   headers: Record<string, string | string[] | undefined>;
 } & CanvasApiResponseBody;
 
-async function handleRequest(
-  responsePromise: Promise<Dispatcher.ResponseData>
-): Promise<CanvasApiResponse> {
-  const response = await responsePromise.catch(() => {
-    throw new CanvasApiRequestError();
-  });
-
-  if (response.statusCode >= 300) {
-    throw await CanvasApiResponseError.fromResponse(response);
+/** Converts an object to something that can be passed as body in a request */
+export function normalizeBody(obj: unknown) {
+  if (typeof obj === "undefined") {
+    return undefined;
   }
 
-  const text = await response.body.text();
+  if (obj instanceof FormData) {
+    return obj;
+  }
 
   try {
-    const json = JSON.parse(text);
-
-    return {
-      statusCode: response.statusCode,
-      headers: response.headers,
-      json,
-      text: null,
-    };
-  } catch (e) {
-    return {
-      statusCode: response.statusCode,
-      headers: response.headers,
-      json: null,
-      text,
-    };
+    return JSON.stringify(obj);
+  } catch (err) {
+    throw new CanvasApiRequestError();
   }
 }
 
@@ -60,15 +45,51 @@ export class CanvasApi {
     this.token = token;
   }
 
-  async get(endpoint: string): Promise<CanvasApiResponse> {
+  /** Internal function. Low-level function to perform requests to Canvas API */
+  private async _request(
+    endpoint: string,
+    method: Dispatcher.HttpMethod,
+    body?: unknown
+  ) {
     const url = new URL(endpoint, this.apiUrl);
-    return handleRequest(
-      request(url, {
-        headers: {
-          authorization: `Bearer ${this.token}`,
-        },
-      })
-    );
+    const response = await request(url, {
+      method,
+      headers: {
+        authorization: `Bearer ${this.token}`,
+      },
+      body: normalizeBody(body),
+    }).catch(() => {
+      throw new CanvasApiRequestError();
+    });
+
+    if (response.statusCode >= 300) {
+      throw await CanvasApiResponseError.fromResponse(response);
+    }
+
+    const text = await response.body.text();
+
+    try {
+      const json = JSON.parse(text);
+
+      return {
+        statusCode: response.statusCode,
+        headers: response.headers,
+        json,
+        text: null,
+      };
+    } catch (e) {
+      return {
+        statusCode: response.statusCode,
+        headers: response.headers,
+        json: null,
+        text,
+      };
+    }
+  }
+
+  /** Performs a GET request to a given endpoint */
+  async get(endpoint: string): Promise<CanvasApiResponse> {
+    return this._request(endpoint, "GET");
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {
@@ -79,12 +100,6 @@ export class CanvasApi {
     const formData = new FormData();
     formData.set("attachment", file);
 
-    const endpoint = new URL("accounts/1/sis_import", this.apiUrl);
-    return handleRequest(
-      request(endpoint, {
-        method: "POST",
-        body: formData,
-      })
-    );
+    return this._request("accounts/1/sis_import", "POST", formData);
   }
 }

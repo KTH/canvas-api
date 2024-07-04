@@ -43,10 +43,12 @@ export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
     const gen = this.generator;
 
     async function* newGenerator() {
-      for await (const v of gen) {
-        if (n > 0) {
-          yield v;
+      while (n > 0) {
+        const next = await gen.next();
+        if (next.done) {
+          return next.value;
         }
+        yield next.value;
         n--;
       }
     }

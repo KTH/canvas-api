@@ -34,3 +34,30 @@ test("AugmentedIterator.toArray does not restart the iteration", async () => {
   await gen2.next();
   await expect(gen2.toArray()).resolves.toEqual([2, 3]);
 });
+
+describe("lazy behavior (does not call generator if not needed)", () => {
+  test("with simple `take(0)`", async () => {
+    async function* gen() {
+      throw new Error();
+    }
+
+    const gen2 = new ExtendedGenerator(gen());
+
+    expect(await gen2.take(0).toArray()).toEqual([]);
+  });
+
+  test("with filter and take", async () => {
+    async function* gen() {
+      throw new Error();
+    }
+
+    const gen2 = new ExtendedGenerator(gen());
+
+    expect(
+      await gen2
+        .filter((_) => true)
+        .take(0)
+        .toArray()
+    ).toEqual([]);
+  });
+});

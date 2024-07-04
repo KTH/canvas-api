@@ -43,11 +43,11 @@ export function normalizeBody(obj: unknown) {
  * Example:
  *
  * ```
- * queryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
+ * stringifyQueryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
  *
  * ```
  */
-export function queryParameters(parameters: CanvasApiQueryParameters) {
+export function stringifyQueryParameters(parameters: CanvasApiQueryParameters) {
   const keyValues: string[] = [];
 
   for (const key in parameters) {
@@ -81,9 +81,15 @@ export class CanvasApi {
   private async _request(
     endpoint: string,
     method: Dispatcher.HttpMethod,
+    params?: CanvasApiQueryParameters,
     body?: unknown
   ) {
-    const url = new URL(endpoint, this.apiUrl);
+    let url = new URL(endpoint, this.apiUrl).toString();
+
+    if (params) {
+      url += "?" + stringifyQueryParameters(params);
+    }
+
     const response = await request(url, {
       method,
       headers: {
@@ -120,8 +126,11 @@ export class CanvasApi {
   }
 
   /** Performs a GET request to a given endpoint */
-  async get(endpoint: string): Promise<CanvasApiResponse> {
-    return this._request(endpoint, "GET");
+  async get(
+    endpoint: string,
+    queryParams?: CanvasApiQueryParameters
+  ): Promise<CanvasApiResponse> {
+    return this._request(endpoint, "GET", queryParams);
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {
@@ -132,6 +141,6 @@ export class CanvasApi {
     const formData = new FormData();
     formData.set("attachment", file);
 
-    return this._request("accounts/1/sis_import", "POST", formData);
+    return this._request("accounts/1/sis_import", "POST", undefined, formData);
   }
 }

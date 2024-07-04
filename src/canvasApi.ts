@@ -15,6 +15,11 @@ export type CanvasApiResponse = {
   headers: Record<string, string | string[] | undefined>;
 } & CanvasApiResponseBody;
 
+export type CanvasApiQueryParameters = Record<
+  string,
+  string | number | (string | number)[]
+>;
+
 /** Converts an object to something that can be passed as body in a request */
 export function normalizeBody(obj: unknown) {
   if (typeof obj === "undefined") {
@@ -30,6 +35,33 @@ export function normalizeBody(obj: unknown) {
   } catch (err) {
     throw new CanvasApiRequestError();
   }
+}
+
+/**
+ * Return query parameters in Canvas accepted format (i.e. "bracket" format)
+ *
+ * Example:
+ *
+ * ```
+ * queryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
+ *
+ * ```
+ */
+export function queryParameters(parameters: CanvasApiQueryParameters) {
+  const keyValues: string[] = [];
+
+  for (const key in parameters) {
+    const value = parameters[key];
+
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        keyValues.push(`${key}[]=${v}`);
+      }
+    } else {
+      keyValues.push(`${key}=${value}`);
+    }
+  }
+  return keyValues.join("&");
 }
 
 export class CanvasApi {

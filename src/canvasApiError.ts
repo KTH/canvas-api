@@ -42,7 +42,7 @@ export class CanvasApiResponseError extends CanvasApiError {
         error.message = "401 Unauthorized";
         break;
       default:
-        error.message += response.statusCode;
+        error.message += " " + response.statusCode;
     }
 
     try {
@@ -67,5 +67,17 @@ export class CanvasApiRequestError extends CanvasApiError {
     // TODO
     super("Canvas API request error");
     this.name = "CanvasApiRequestError";
+  }
+}
+
+export class CanvasApiPaginationError extends CanvasApiError {
+  response: CanvasApiResponse;
+
+  constructor(response: CanvasApiResponse) {
+    super(
+      "This endpoint did not responded with a list. Use `listPages` or `get` instead"
+    );
+    this.response = response;
+    this.name = "CanvasApiPaginationError";
   }
 }

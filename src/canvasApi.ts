@@ -2,6 +2,7 @@ import { request, FormData } from "undici";
 import type { Dispatcher } from "undici";
 import { readFile } from "node:fs/promises";
 import {
+  CanvasApiPaginationError,
   CanvasApiRequestError,
   CanvasApiResponseError,
 } from "./canvasApiError";
@@ -167,7 +168,7 @@ export class CanvasApi {
     async function* generator() {
       for await (const page of t.listPages(endpoint, queryParams)) {
         if (!Array.isArray(page.json)) {
-          throw new Error();
+          throw new CanvasApiPaginationError(page);
         }
 
         for (const element of page.json) {

@@ -37,6 +37,7 @@ test("AugmentedIterator.toArray does not restart the iteration", async () => {
 
 describe("lazy behavior (does not call generator if not needed)", () => {
   test("with simple `take(0)`", async () => {
+    // eslint-disable-next-line require-yield
     async function* gen() {
       throw new Error();
     }
@@ -47,6 +48,7 @@ describe("lazy behavior (does not call generator if not needed)", () => {
   });
 
   test("with filter and take", async () => {
+    // eslint-disable-next-line require-yield
     async function* gen() {
       throw new Error();
     }
@@ -55,7 +57,7 @@ describe("lazy behavior (does not call generator if not needed)", () => {
 
     expect(
       await gen2
-        .filter((_) => true)
+        .filter(() => true)
         .take(0)
         .toArray()
     ).toEqual([]);

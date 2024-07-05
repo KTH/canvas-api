@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
   private generator: AsyncGenerator<T, void, unknown>;
   constructor(generator: AsyncGenerator<T, void, unknown>) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { request, FormData } from "undici";
 import type { Dispatcher } from "undici";
 import { readFile } from "node:fs/promises";

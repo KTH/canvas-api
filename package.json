@@ -11,8 +11,10 @@
   },
   "scripts": {
     "format": "eslint && prettier --write .",
-    "test": "npm run build && npm run test:lint && jest",
+    "test": "npm run build && npm run test:lint && npm run test:unit",
     "test:lint": "eslint src && prettier --check .",
+    "test:unit": "jest src/",
+    "test:integration": "jest integration-tests/",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepublish": "npm run build"
   },

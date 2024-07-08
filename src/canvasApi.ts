@@ -18,6 +18,10 @@ export type CanvasApiResponse = {
   headers: Record<string, string | string[] | undefined>;
 } & CanvasApiResponseBody;
 
+export type RequestOptions = {
+  timeout?: number;
+};
+
 export type QueryParams = Record<string, string | number | (string | number)[]>;
 
 /** Converts an object to something that can be passed as body in a request */
@@ -81,14 +85,16 @@ export function stringifyQueryParameters(parameters: QueryParams) {
 export class CanvasApi {
   apiUrl: URL;
   token: string;
+  options: RequestOptions;
 
-  constructor(apiUrl: string, token: string) {
+  constructor(apiUrl: string, token: string, options: RequestOptions = {}) {
     // For correct parsing, check that `apiUrl` contains a trailing slash
     if (!apiUrl.endsWith("/")) {
       throw new TypeError("Parameter `apiUrl` must end with trailing slash");
     }
     this.apiUrl = new URL(apiUrl);
     this.token = token;
+    this.options = options;
   }
 
   /** Internal function. Low-level function to perform requests to Canvas API */
@@ -96,9 +102,11 @@ export class CanvasApi {
     endpoint: string,
     method: Dispatcher.HttpMethod,
     params?: QueryParams,
-    body?: unknown
+    body?: unknown,
+    options: RequestOptions = {}
   ) {
     let url = new URL(endpoint, this.apiUrl).toString();
+    const mergedOptions = { ...this.options, ...options };
 
     if (params) {
       url += stringifyQueryParameters(params);
@@ -110,6 +118,9 @@ export class CanvasApi {
         authorization: `Bearer ${this.token}`,
       },
       body: normalizeBody(body),
+      signal: mergedOptions.timeout
+        ? AbortSignal.timeout(mergedOptions.timeout)
+        : null,
     }).catch(() => {
       throw new CanvasApiRequestError();
     });
@@ -142,21 +153,32 @@ export class CanvasApi {
   /** Performs a GET request to a given endpoint */
   async get(
     endpoint: string,
-    queryParams: QueryParams = {}
+    queryParams: QueryParams = {},
+    options: RequestOptions = {}
   ): Promise<CanvasApiResponse> {
-    return this._request(endpoint, "GET", queryParams);
+    return this._request(endpoint, "GET", queryParams, undefined, options);
   }
 
-  listPages(endpoint: string, queryParams: QueryParams = {}) {
+  listPages(
+    endpoint: string,
+    queryParams: QueryParams = {},
+    options: RequestOptions = {}
+  ) {
     const t = this;
     async function* generator() {
-      const first = await t._request(endpoint, "GET", queryParams);
+      const first = await t._request(
+        endpoint,
+        "GET",
+        queryParams,
+        undefined,
+        options
+      );
 
       yield first;
       let url = first.headers.link && getNextUrl(first.headers.link);
 
       while (url) {
-        const response = await t._request(url, "GET");
+        const response = await t._request(url, "GET", {}, undefined, options);
         yield response;
         url = response.headers.link && getNextUrl(response.headers.link);
       }
@@ -165,10 +187,14 @@ export class CanvasApi {
     return new ExtendedGenerator(generator());
   }
 
-  listItems(endpoint: string, queryParams: QueryParams = {}) {
+  listItems(
+    endpoint: string,
+    queryParams: QueryParams = {},
+    options: RequestOptions = {}
+  ) {
     const t = this;
     async function* generator() {
-      for await (const page of t.listPages(endpoint, queryParams)) {
+      for await (const page of t.listPages(endpoint, queryParams, options)) {
         if (!Array.isArray(page.json)) {
           throw new CanvasApiPaginationError(page);
         }
@@ -181,14 +207,19 @@ export class CanvasApi {
     return new ExtendedGenerator(generator());
   }
 
-  request(endpoint: string, method: Dispatcher.HttpMethod, body?: any) {
+  request(
+    endpoint: string,
+    method: Dispatcher.HttpMethod,
+    body?: any,
+    options: RequestOptions = {}
+  ) {
     if (method === "GET") {
       throw new TypeError(
         "HTTP GET not allowed for this 'request' method. Use the methods 'get', 'listPages' or 'listItems' instead"
       );
     }
 
-    return this._request(endpoint, method, undefined, body);
+    return this._request(endpoint, method, undefined, body, options);
   }
 
   async sisImport(attachment: string): Promise<CanvasApiResponse> {

@@ -5,6 +5,7 @@ import {
   getGlobalDispatcher,
   Dispatcher,
 } from "undici";
+import { createServer } from "node:http";
 
 describe("queryParameters", () => {
   test("should parse primitives parameters correctly", () => {
@@ -234,5 +235,55 @@ describe("CanvasApiResponseError", () => {
         "text": "I am a teapot and invalid JSON )",
       }
     `);
+  });
+});
+
+describe("method-level timeout", () => {
+  let server: ReturnType<typeof createServer>;
+  let timeout: ReturnType<typeof setTimeout>;
+
+  // It is not possible to use undici mocks to mock timeouts
+  beforeEach(() => {
+    server = createServer((req, res) => {
+      timeout = setTimeout(() => {
+        res.end("hello");
+      }, 1000);
+    });
+    server.listen(0);
+  });
+
+  afterEach(() => {
+    clearTimeout(timeout);
+    server.close();
+  });
+
+  test("times out before the response", async () => {
+    const port = (server.address() as any).port;
+    const canvas = new CanvasApi(`http://0.0.0.0:${port}/`, "");
+    const t1 = Date.now();
+    const error = await canvas
+      .get("timeout", {}, { timeout: 100 })
+      .catch((e) => e);
+    const t2 = Date.now();
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(t2 - t1).toBeLessThan(120);
+  });
+
+  test("overrides globally set timeout", async () => {
+    const port = (server.address() as any).port;
+    const canvas = new CanvasApi(`http://0.0.0.0:${port}/`, "", {
+      timeout: 1000000,
+    });
+    const t1 = Date.now();
+    const error = await canvas
+      .get("timeout", {}, { timeout: 100 })
+      .catch((e) => e);
+    const t2 = Date.now();
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(t2 - t1).toBeLessThan(120);
   });
 });

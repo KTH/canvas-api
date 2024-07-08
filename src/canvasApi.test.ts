@@ -1,10 +1,15 @@
 import { CanvasApi, stringifyQueryParameters } from "./canvasApi";
-import { MockAgent, setGlobalDispatcher } from "undici";
+import {
+  MockAgent,
+  setGlobalDispatcher,
+  getGlobalDispatcher,
+  Dispatcher,
+} from "undici";
 
 describe("queryParameters", () => {
   test("should parse primitives parameters correctly", () => {
     const input = { page: 1, id: "2" };
-    const expected = "page=1&id=2";
+    const expected = "?page=1&id=2";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
@@ -16,19 +21,19 @@ describe("queryParameters", () => {
 
   test("should work with one parameter", () => {
     const input = { id: 3 };
-    const expected = "id=3";
+    const expected = "?id=3";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
   test("should parse array parameters correctly", () => {
     const input = { role: [3, 10] };
-    const expected = "role[]=3&role[]=10";
+    const expected = "?role[]=3&role[]=10";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
   test("should work with arrays mixing numbers and strings", () => {
     const input = { role: [3, "10"] };
-    const expected = "role[]=3&role[]=10";
+    const expected = "?role[]=3&role[]=10";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
@@ -40,8 +45,11 @@ describe("queryParameters", () => {
 });
 
 describe("listItems", () => {
+  let defaultAgent: Dispatcher;
+
   beforeAll(() => {
     const mockAgent = new MockAgent();
+    defaultAgent = getGlobalDispatcher();
     setGlobalDispatcher(mockAgent);
 
     const mockPool = mockAgent.get("https://canvas.local");
@@ -86,6 +94,10 @@ describe("listItems", () => {
       .reply(200, [4, 5]);
   });
 
+  afterAll(() => {
+    setGlobalDispatcher(defaultAgent);
+  });
+
   test("returns correct iterable", async () => {
     const canvas = new CanvasApi("https://canvas.local/", "");
     const output = await canvas.listItems("courses/page1").toArray();
@@ -108,4 +120,34 @@ describe("listItems", () => {
 
     expect(output).toEqual([1, 2, 3, 4, 5]);
   });
+});
+
+describe("`get` can parse JSON response", () => {
+  beforeAll(() => {
+    const mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+
+    const mockPool = mockAgent.get("https://canvas.kth.se");
+    mockPool
+      .intercept({ path: "/example", method: "GET" })
+      .reply(200, '{ "hello" : "world" }');
+
+    // mockPool
+    //   .intercept({ path: "/example-text", method: "GET" })
+    //   .reply(200, "This is not a { json");
+  });
+
+  test("Parsing a valid json", async () => {
+    const canvas = new CanvasApi("https://canvas.kth.se/", "");
+    const { json, text } = await canvas.get("example");
+
+    expect({ json, text }).toMatchInlineSnapshot(`
+      {
+        "json": {
+          "hello": "world",
+        },
+        "text": null,
+      }
+    `);
+  }, 10000);
 });

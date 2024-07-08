@@ -74,7 +74,8 @@ export function stringifyQueryParameters(parameters: QueryParams) {
       keyValues.push(`${key}=${value}`);
     }
   }
-  return keyValues.join("&");
+
+  return keyValues.length === 0 ? "" : "?" + keyValues.join("&");
 }
 
 export class CanvasApi {
@@ -100,7 +101,7 @@ export class CanvasApi {
     let url = new URL(endpoint, this.apiUrl).toString();
 
     if (params) {
-      url += "?" + stringifyQueryParameters(params);
+      url += stringifyQueryParameters(params);
     }
 
     const response = await request(url, {

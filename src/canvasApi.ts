@@ -181,6 +181,16 @@ export class CanvasApi {
     return new ExtendedGenerator(generator());
   }
 
+  request(endpoint: string, method: Dispatcher.HttpMethod, body?: any) {
+    if (method === "GET") {
+      throw new TypeError(
+        "HTTP GET not allowed for this 'request' method. Use the methods 'get', 'listPages' or 'listItems' instead"
+      );
+    }
+
+    return this._request(endpoint, method, undefined, body);
+  }
+
   async sisImport(attachment: string): Promise<CanvasApiResponse> {
     const file = await readFile(attachment).then(
       (buffer) => new Blob([buffer])

@@ -132,9 +132,9 @@ describe("`get` can parse JSON response", () => {
       .intercept({ path: "/example", method: "GET" })
       .reply(200, '{ "hello" : "world" }');
 
-    // mockPool
-    //   .intercept({ path: "/example-text", method: "GET" })
-    //   .reply(200, "This is not a { json");
+    mockPool
+      .intercept({ path: "/example-text", method: "GET" })
+      .reply(200, "This is not a { json");
   });
 
   test("Parsing a valid json", async () => {
@@ -149,5 +149,90 @@ describe("`get` can parse JSON response", () => {
         "text": null,
       }
     `);
-  }, 10000);
+  });
+
+  test("Parsing an invalid json", async () => {
+    const canvas = new CanvasApi("https://canvas.kth.se/", "");
+    const { json, text } = await canvas.get("example-text");
+
+    expect({ json, text }).toMatchInlineSnapshot(`
+      {
+        "json": null,
+        "text": "This is not a { json",
+      }
+    `);
+  });
+});
+
+describe("CanvasApiResponseError", () => {
+  beforeAll(() => {
+    const mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+
+    const mockPool = mockAgent.get("https://canvas.local");
+
+    mockPool
+      .intercept({ path: "/errored", method: "GET" })
+      .reply(400, '{"message": "Missing parameters"}');
+
+    mockPool
+      .intercept({ path: "/errored", method: "POST" })
+      .reply(405, '{ "message": "Method not allowed" }');
+
+    mockPool
+      .intercept({ path: "/errored", method: "PUT" })
+      .reply(418, "I am a teapot and invalid JSON )");
+  });
+
+  test("errored GET request", async () => {
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.get("errored").catch((e) => e);
+
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(error?.response).toMatchInlineSnapshot(`
+      {
+        "headers": {},
+        "json": {
+          "message": "Missing parameters",
+        },
+        "statusCode": 400,
+        "text": null,
+      }
+    `);
+  });
+
+  test("errored POST request with valid JSON", async () => {
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.request("errored", "POST").catch((e) => e);
+
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(error?.response).toMatchInlineSnapshot(`
+      {
+        "headers": {},
+        "json": {
+          "message": "Method not allowed",
+        },
+        "statusCode": 405,
+        "text": null,
+      }
+    `);
+  });
+
+  test("errored PUT request with invalid JSON", async () => {
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.request("errored", "PUT").catch((e) => e);
+
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(error?.response).toMatchInlineSnapshot(`
+      {
+        "headers": {},
+        "json": null,
+        "statusCode": 418,
+        "text": "I am a teapot and invalid JSON )",
+      }
+    `);
+  });
 });

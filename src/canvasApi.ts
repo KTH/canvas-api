@@ -210,7 +210,7 @@ export class CanvasApi {
   request(
     endpoint: string,
     method: Dispatcher.HttpMethod,
-    body?: any,
+    body?: unknown,
     options: RequestOptions = {}
   ) {
     if (method === "GET") {

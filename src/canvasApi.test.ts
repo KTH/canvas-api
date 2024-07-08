@@ -258,6 +258,7 @@ describe("method-level timeout", () => {
   });
 
   test("times out before the response", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const port = (server.address() as any).port;
     const canvas = new CanvasApi(`http://0.0.0.0:${port}/`, "");
     const t1 = Date.now();
@@ -272,6 +273,7 @@ describe("method-level timeout", () => {
   });
 
   test("overrides globally set timeout", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const port = (server.address() as any).port;
     const canvas = new CanvasApi(`http://0.0.0.0:${port}/`, "", {
       timeout: 1000000,

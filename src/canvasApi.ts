@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { request, FormData } from "undici";
 import type { Dispatcher } from "undici";
-import { readFile } from "node:fs/promises";
 import {
   CanvasApiPaginationError,
   CanvasApiRequestError,
@@ -222,14 +221,11 @@ export class CanvasApi {
     return this._request(endpoint, method, undefined, body, options);
   }
 
-  async sisImport(attachment: string): Promise<CanvasApiResponse> {
-    const file = await readFile(attachment).then(
-      (buffer) => new Blob([buffer])
-    );
-
+  async sisImport(attachment: Buffer): Promise<CanvasApiResponse> {
+    const file = new Blob([attachment]);
     const formData = new FormData();
     formData.set("attachment", file);
 
-    return this._request("accounts/1/sis_import", "POST", undefined, formData);
+    return this._request("accounts/1/sis_imports", "POST", undefined, formData);
   }
 }

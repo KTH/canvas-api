@@ -89,7 +89,7 @@ export class CanvasApi {
   constructor(apiUrl: string, token: string, options: RequestOptions = {}) {
     // For correct parsing, check that `apiUrl` contains a trailing slash
     if (!apiUrl.endsWith("/")) {
-      throw new TypeError("Parameter `apiUrl` must end with trailing slash");
+      this.apiUrl = new URL(apiUrl + "/");
     }
     this.apiUrl = new URL(apiUrl);
     this.token = token;

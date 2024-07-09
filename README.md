@@ -4,38 +4,20 @@
 npm i @kth/canvas-api
 ```
 
-Node.JS HTTP client (for both TypeScript and JavaScript) based on [got](https://github.com/sindresorhus/got) for the [Canvas LMS API](https://canvas.instructure.com/doc/api/)
+Node.JS HTTP client (for both TypeScript and JavaScript) for the [Canvas LMS API](https://canvas.instructure.com/doc/api/)
 
 ## Getting Started
 
 First, generate a token by going to `«YOUR CANVAS INSTANCE»/profile/settings`. For example https://canvas.kth.se/profile/settings. Then you can do something like:
 
-```js
-const canvasApiUrl = process.env.CANVAS_API_URL;
-const canvasApiToken = process.env.CANVAS_API_TOKEN;
-const Canvas = require("@kth/canvas-api").default;
-
-async function start() {
-  console.log("Making a GET request to /accounts/1");
-  const canvas = new Canvas(canvasApiUrl, canvasApiToken);
-
-  const { body } = await canvas.get("accounts/1");
-  console.log(body);
-}
-
-start();
-```
-
-In TypeScript, use `import`:
-
 ```ts
-import Canvas from "@kth/canvas-api";
+import { CanvasApi } from "@kth/canvas-api";
 
 console.log("Making a GET request to /accounts/1");
-const canvas = new Canvas(canvasApiUrl, canvasApiToken);
+const canvas = new CanvasApi("<YOUR CANVAS INSTANCE>/api/v1", "<YOUR CANVAS TOKEN>");
 
-const { body } = await canvas.get("accounts/1");
-console.log(body);
+const { json } = await canvas.get("accounts/1");
+console.log(json);
 ```
 
 ## Concepts

@@ -10,7 +10,8 @@ import { ExtendedGenerator } from "./extendedGenerator";
 
 export type CanvasApiResponseBody =
   | { json: null; text: string }
-  | { json: unknown; text: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { json: any; text: null };
 
 export type CanvasApiResponse = {
   statusCode: number;
@@ -90,8 +91,9 @@ export class CanvasApi {
     // For correct parsing, check that `apiUrl` contains a trailing slash
     if (!apiUrl.endsWith("/")) {
       this.apiUrl = new URL(apiUrl + "/");
+    } else {
+      this.apiUrl = new URL(apiUrl);
     }
-    this.apiUrl = new URL(apiUrl);
     this.token = token;
     this.options = options;
   }

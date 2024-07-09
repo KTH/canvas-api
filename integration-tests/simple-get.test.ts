@@ -21,7 +21,7 @@ describe("GET requests without parameters", () => {
     expect(() => client.get("accounts/1")).rejects.toThrowError(
       CanvasApiResponseError
     );
-  });
+  }, 10000);
 
   it("Should not fail if token is given", async () => {
     const client = new CanvasApi(
@@ -38,7 +38,7 @@ describe("GET requests without parameters", () => {
         "workflow_state": "active",
       }
     `);
-  });
+  }, 10000);
 });
 
 describe("GET requests with query parameters", () => {
@@ -57,5 +57,5 @@ describe("GET requests with query parameters", () => {
     expect(uniqueRoles.size).toBe(2);
     expect(uniqueRoles.has(3)).toBeTruthy();
     expect(uniqueRoles.has(6)).toBeTruthy();
-  });
+  }, 10000);
 });

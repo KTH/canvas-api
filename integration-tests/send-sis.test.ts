@@ -22,5 +22,5 @@ describe("Send SIS Import CSV", () => {
     expect(statusCode).toBe(200);
     expect(text).toBeNull();
     expect(sisImportSchema.safeParse(json)).toBeTruthy();
-  });
+  }, 10000);
 });

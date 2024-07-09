@@ -1,10 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Extends the native "AsyncGenerator" class by adding utility methods */
 export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
   private generator: AsyncGenerator<T, void, unknown>;
   constructor(generator: AsyncGenerator<T, void, unknown>) {
     this.generator = generator;
   }
 
+  /**
+   * Converts the iterator into an array that contains all the elements of the iterator.
+   * The iterator is exhausted
+   */
   async toArray(): Promise<T[]> {
     const result: T[] = [];
 
@@ -15,6 +21,9 @@ export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
     return result;
   }
 
+  /**
+   * Creates an iterator with elements of the a given iterator that satisfies the `predicate`
+   */
   filter(predicate: (v: T) => boolean): ExtendedGenerator<T> {
     const g = this.generator;
 
@@ -29,6 +38,10 @@ export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
     return new ExtendedGenerator(newGenerator());
   }
 
+  /**
+   * Creates an iterator with the result of calling the `callback` function on every element in
+   * the calling iterator
+   */
   map<V>(callback: (v: T) => V): ExtendedGenerator<V> {
     const gen = this.generator;
 
@@ -40,6 +53,9 @@ export class ExtendedGenerator<T> implements AsyncGenerator<T, void, unknown> {
     return new ExtendedGenerator(newGenerator());
   }
 
+  /**
+   * Creates an iterator that contains only the first `n` elements in the calling iterator
+   */
   take(n: number): ExtendedGenerator<T> {
     const gen = this.generator;
 

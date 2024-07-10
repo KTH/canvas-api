@@ -143,7 +143,7 @@ export class CanvasApi {
       throw new CanvasApiConnectionError();
     });
 
-    if (response.statusCode >= 300) {
+    if (response.statusCode >= 400) {
       throw await CanvasApiResponseError.fromResponse(response);
     }
 

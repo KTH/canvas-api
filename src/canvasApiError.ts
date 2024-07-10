@@ -24,8 +24,9 @@ export class CanvasApiResponseError extends CanvasApiError {
     this.response = {
       statusCode: response.statusCode,
       headers: response.headers,
-      json: null,
-      text: null,
+      json: undefined,
+      text: "",
+      body: undefined,
     };
   }
 
@@ -45,15 +46,14 @@ export class CanvasApiResponseError extends CanvasApiError {
         error.message = "Canvas API: " + response.statusCode;
     }
 
+    error.response.text = text;
+
     try {
       // TODO: find a good "message" in the body and override `error.message`
       const json = await JSON.parse(text);
-      error.response.text = null;
       error.response.json = json;
-    } catch (err) {
-      error.response.text = text;
-      error.response.json = null;
-    }
+      error.response.body = json;
+    } catch (err) {}
 
     return error;
   }

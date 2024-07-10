@@ -8,15 +8,25 @@ import {
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
 
-export type CanvasApiResponseBody =
-  | { json: null; text: string }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  | { json: any; text: null };
-
 export type CanvasApiResponse = {
+  /** HTTP status code from Canvas */
   statusCode: number;
+
+  /** Object with headers */
   headers: Record<string, string | string[] | undefined>;
-} & CanvasApiResponseBody;
+
+  /** Parsed body. `undefined` if the response cannot be parsed` */
+  json: any;
+
+  /**
+   * Alias for `json`.
+   * @deprecated. Use `json` or `text` instead
+   */
+  body: any;
+
+  /** Body without parsing */
+  text: string;
+};
 
 export type RequestOptions = {
   timeout?: number;
@@ -105,7 +115,7 @@ export class CanvasApi {
     params?: QueryParams,
     body?: unknown,
     options: RequestOptions = {}
-  ) {
+  ): Promise<CanvasApiResponse> {
     let url = new URL(endpoint, this.apiUrl).toString();
     const mergedOptions = { ...this.options, ...options };
 
@@ -138,14 +148,16 @@ export class CanvasApi {
       return {
         statusCode: response.statusCode,
         headers: response.headers,
+        body: json,
         json,
-        text: null,
+        text,
       };
     } catch (e) {
       return {
         statusCode: response.statusCode,
         headers: response.headers,
-        json: null,
+        body: undefined,
+        json: undefined,
         text,
       };
     }

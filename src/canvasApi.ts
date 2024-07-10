@@ -3,8 +3,9 @@ import { request, FormData } from "undici";
 import type { Dispatcher } from "undici";
 import {
   CanvasApiPaginationError,
-  CanvasApiRequestError,
+  CanvasApiConnectionError,
   CanvasApiResponseError,
+  CanvasApiTimeoutError,
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
 
@@ -16,12 +17,14 @@ export type CanvasApiResponse = {
   headers: Record<string, string | string[] | undefined>;
 
   /** Parsed body. `undefined` if the response cannot be parsed` */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   json: any;
 
   /**
    * Alias for `json`.
    * @deprecated. Use `json` or `text` instead
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body: any;
 
   /** Body without parsing */
@@ -47,7 +50,7 @@ export function normalizeBody(obj: unknown) {
   try {
     return JSON.stringify(obj);
   } catch (err) {
-    throw new CanvasApiRequestError();
+    throw new CanvasApiConnectionError();
   }
 }
 
@@ -132,8 +135,12 @@ export class CanvasApi {
       signal: mergedOptions.timeout
         ? AbortSignal.timeout(mergedOptions.timeout)
         : null,
-    }).catch(() => {
-      throw new CanvasApiRequestError();
+    }).catch((err) => {
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        throw new CanvasApiTimeoutError();
+      }
+
+      throw new CanvasApiConnectionError();
     });
 
     if (response.statusCode >= 300) {
@@ -141,26 +148,24 @@ export class CanvasApi {
     }
 
     const text = await response.body.text();
+    const result = {
+      statusCode: response.statusCode,
+      headers: response.headers,
+      body: undefined,
+      json: undefined,
+      text,
+    };
 
     try {
       const json = JSON.parse(text);
 
-      return {
-        statusCode: response.statusCode,
-        headers: response.headers,
-        body: json,
-        json,
-        text,
-      };
+      result.json = json;
+      result.body = json;
     } catch (e) {
-      return {
-        statusCode: response.statusCode,
-        headers: response.headers,
-        body: undefined,
-        json: undefined,
-        text,
-      };
+      // Do not do anything
     }
+
+    return result;
   }
 
   /** Performs a GET request to a given endpoint */

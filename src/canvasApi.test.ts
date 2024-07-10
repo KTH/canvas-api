@@ -147,7 +147,7 @@ describe("`get` can parse JSON response", () => {
         "json": {
           "hello": "world",
         },
-        "text": null,
+        "text": "{ "hello" : "world" }",
       }
     `);
   });
@@ -158,7 +158,7 @@ describe("`get` can parse JSON response", () => {
 
     expect({ json, text }).toMatchInlineSnapshot(`
       {
-        "json": null,
+        "json": undefined,
         "text": "This is not a { json",
       }
     `);
@@ -193,12 +193,15 @@ describe("CanvasApiResponseError", () => {
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
       {
+        "body": {
+          "message": "Missing parameters",
+        },
         "headers": {},
         "json": {
           "message": "Missing parameters",
         },
         "statusCode": 400,
-        "text": null,
+        "text": "{"message": "Missing parameters"}",
       }
     `);
   });
@@ -211,12 +214,15 @@ describe("CanvasApiResponseError", () => {
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
       {
+        "body": {
+          "message": "Method not allowed",
+        },
         "headers": {},
         "json": {
           "message": "Method not allowed",
         },
         "statusCode": 405,
-        "text": null,
+        "text": "{ "message": "Method not allowed" }",
       }
     `);
   });
@@ -229,8 +235,9 @@ describe("CanvasApiResponseError", () => {
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
       {
+        "body": undefined,
         "headers": {},
-        "json": null,
+        "json": undefined,
         "statusCode": 418,
         "text": "I am a teapot and invalid JSON )",
       }
@@ -267,7 +274,7 @@ describe("method-level timeout", () => {
       .catch((e) => e);
     const t2 = Date.now();
 
-    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.name).toEqual("CanvasApiTimeoutError");
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(t2 - t1).toBeLessThan(120);
   });
@@ -284,7 +291,7 @@ describe("method-level timeout", () => {
       .catch((e) => e);
     const t2 = Date.now();
 
-    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.name).toEqual("CanvasApiTimeoutError");
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(t2 - t1).toBeLessThan(120);
   });

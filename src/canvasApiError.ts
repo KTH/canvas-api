@@ -53,7 +53,9 @@ export class CanvasApiResponseError extends CanvasApiError {
       const json = await JSON.parse(text);
       error.response.json = json;
       error.response.body = json;
-    } catch (err) {}
+    } catch (err) {
+      // Don't do anything
+    }
 
     return error;
   }
@@ -62,11 +64,19 @@ export class CanvasApiResponseError extends CanvasApiError {
 /**
  * Thrown when there was some error before reaching Canvas
  */
-export class CanvasApiRequestError extends CanvasApiError {
+export class CanvasApiConnectionError extends CanvasApiError {
   constructor() {
     // TODO
     super("Canvas API request error");
-    this.name = "CanvasApiRequestError";
+    this.name = "CanvasApiConnectionError";
+  }
+}
+
+/** Thrown when a request times out before getting any response */
+export class CanvasApiTimeoutError extends CanvasApiError {
+  constructor() {
+    super("Canvas API timeout error");
+    this.name = "CanvasApiTimeoutError";
   }
 }
 

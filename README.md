@@ -14,7 +14,10 @@ First, generate a token by going to `«YOUR CANVAS INSTANCE»/profile/settings`.
 import { CanvasApi } from "@kth/canvas-api";
 
 console.log("Making a GET request to /accounts/1");
-const canvas = new CanvasApi("<YOUR CANVAS INSTANCE>/api/v1", "<YOUR CANVAS TOKEN>");
+const canvas = new CanvasApi(
+  "<YOUR CANVAS INSTANCE>/api/v1",
+  "<YOUR CANVAS TOKEN>"
+);
 
 const { json } = await canvas.get("accounts/1");
 console.log(json);
@@ -31,4 +34,3 @@ console.log(json);
 ### Error handling
 
 ## Design philosophy
-

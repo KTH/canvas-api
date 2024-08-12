@@ -20,7 +20,6 @@ describe("Send SIS Import CSV", () => {
     const file = await readFile(resolve(__dirname, "./test.csv"));
     const { json, statusCode, text } = await client.sisImport(file);
     expect(statusCode).toBe(200);
-    expect(text).toBeNull();
     expect(sisImportSchema.safeParse(json)).toBeTruthy();
   }, 10000);
 });

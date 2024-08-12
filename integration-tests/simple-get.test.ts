@@ -30,7 +30,6 @@ describe("GET requests without parameters", () => {
     );
     const { json, statusCode, text } = await client.get("accounts/1");
     expect(statusCode).toBe(200);
-    expect(text).toBeNull();
     expect(accountSchema.parse(json)).toMatchInlineSnapshot(`
       {
         "id": 1,

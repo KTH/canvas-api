@@ -2,12 +2,10 @@
 /* eslint-disable */
 require("dotenv").config();
 const canvasApiUrl = process.env.CANVAS_API_URL;
-const canvasApiToken = process.env.CANVAS_API_TOKEN;
-const Canvas = require("../dist/index").default;
-const { CanvasApiError } = require("../dist/index");
+const { CanvasApi, CanvasApiResponseError } = require("@kth/canvas-api");
 
 async function start() {
-  const canvas = new Canvas(canvasApiUrl, "-------");
+  const canvas = new CanvasApi(canvasApiUrl, "-------");
   const pages = canvas.listPages("accounts/1/courses");
 
   // Now `pages` is an iterator that goes through every page
@@ -21,10 +19,10 @@ async function start() {
       }
     }
   } catch (err) {
-    if (err instanceof CanvasApiError) {
-      console.log(err.options.url);
+    if (err instanceof CanvasApiResponseError) {
       console.log(err.response.statusCode);
       console.log(err.message);
+      console.log(err.response.text);
     }
   }
 }

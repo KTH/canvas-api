@@ -17,7 +17,10 @@ describe("Send SIS Import CSV", () => {
       process.env.CANVAS_API_URL!,
       process.env.CANVAS_API_TOKEN!
     );
-    const file = await readFile(resolve(__dirname, "./test.csv"));
+    const file = new File(
+      [await readFile(resolve(__dirname, "./test.csv"))],
+      "test.csv"
+    );
     const { json, statusCode, text } = await client.sisImport(file);
     expect(statusCode).toBe(200);
     expect(sisImportSchema.safeParse(json)).toBeTruthy();

@@ -240,10 +240,9 @@ export class CanvasApi {
     return this._request(endpoint, method, undefined, body, options);
   }
 
-  async sisImport(attachment: Buffer): Promise<CanvasApiResponse> {
-    const file = new Blob([attachment]);
+  async sisImport(attachment: File): Promise<CanvasApiResponse> {
     const formData = new FormData();
-    formData.set("attachment", file);
+    formData.set("attachment", attachment);
 
     return this._request("accounts/1/sis_imports", "POST", undefined, formData);
   }

@@ -125,11 +125,11 @@ export class CanvasApi {
     if (params) {
       url += stringifyQueryParameters(params);
     }
-
     const response = await request(url, {
       method,
       headers: {
         authorization: `Bearer ${this.token}`,
+        "content-type": "application/json",
       },
       body: normalizeBody(body),
       signal: mergedOptions.timeout

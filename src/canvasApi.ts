@@ -125,13 +125,16 @@ export class CanvasApi {
     if (params) {
       url += stringifyQueryParameters(params);
     }
+    const normalBody = normalizeBody(body);
+    const header = {
+      authorization: `Bearer ${this.token}`,
+      "content-type": normalBody instanceof FormData ? undefined : "application/json"
+     }
+
     const response = await request(url, {
       method,
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        "content-type": "application/json",
-      },
-      body: normalizeBody(body),
+      headers: header,
+      body: normalBody,
       signal: mergedOptions.timeout
         ? AbortSignal.timeout(mergedOptions.timeout)
         : null,

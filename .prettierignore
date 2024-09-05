@@ -4,6 +4,7 @@ build-information.js
 node_modules
 .env
 dist
+nix
 
 # VS Code specific
 .vscode

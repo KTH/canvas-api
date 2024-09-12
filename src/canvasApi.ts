@@ -156,6 +156,14 @@ export class CanvasApi {
         normalBody instanceof FormData ? undefined : "application/json",
     };
 
+    // We declare the Error objects here to put the right stack trace
+    const responseError = new CanvasApiResponseError();
+    const timeoutError = new CanvasApiTimeoutError();
+    const connectionError = new CanvasApiConnectionError();
+    Error.captureStackTrace(responseError);
+    Error.captureStackTrace(timeoutError);
+    Error.captureStackTrace(connectionError);
+
     const response = await request(url, {
       method,
       headers: header,
@@ -169,14 +177,15 @@ export class CanvasApi {
       )
       .catch((err) => {
         if (err instanceof DOMException && err.name === "TimeoutError") {
-          throw new CanvasApiTimeoutError();
+          throw timeoutError;
         }
 
-        throw new CanvasApiConnectionError();
+        throw connectionError;
       });
 
     if (response.statusCode >= 400) {
-      throw new CanvasApiResponseError(response);
+      responseError.response = response;
+      throw responseError;
     }
 
     return response;

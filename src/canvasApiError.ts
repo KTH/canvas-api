@@ -17,10 +17,10 @@ export class CanvasApiResponseError extends CanvasApiError {
    * Note: this constructor does not parse the body in `response`.
    * Use {@link CanvasAPIResponseError.fromResponse} instead
    */
-  constructor(response: CanvasApiResponse) {
+  constructor() {
     super("Canvas API response error");
     this.name = "CanvasApiResponseError";
-    this.response = response;
+    this.response = new CanvasApiResponse();
   }
 }
 
@@ -30,7 +30,9 @@ export class CanvasApiResponseError extends CanvasApiError {
 export class CanvasApiConnectionError extends CanvasApiError {
   constructor() {
     // TODO
-    super("Canvas API request error");
+    super(
+      "Canvas API Connection Error: some error happen before reaching Canvas API"
+    );
     this.name = "CanvasApiConnectionError";
   }
 }

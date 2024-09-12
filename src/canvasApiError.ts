@@ -1,4 +1,3 @@
-import { Dispatcher } from "undici";
 import { CanvasApiResponse } from "./canvasApi";
 /** Super-class for CanvasApi library */
 export class CanvasApiError extends Error {
@@ -18,46 +17,10 @@ export class CanvasApiResponseError extends CanvasApiError {
    * Note: this constructor does not parse the body in `response`.
    * Use {@link CanvasAPIResponseError.fromResponse} instead
    */
-  constructor(response: Dispatcher.ResponseData) {
+  constructor(response: CanvasApiResponse) {
     super("Canvas API response error");
     this.name = "CanvasApiResponseError";
-    this.response = {
-      statusCode: response.statusCode,
-      headers: response.headers,
-      json: undefined,
-      text: "",
-      body: undefined,
-    };
-  }
-
-  /**
-   * Returns a `CanvasApiResponseError` with a parsed response
-   */
-  static async fromResponse(response: Dispatcher.ResponseData) {
-    const error = new CanvasApiResponseError(response);
-    const text = await response.body.text();
-
-    // Override the default error message
-    switch (response.statusCode) {
-      case 401:
-        error.message = "Canvas API: 401 Unauthorized";
-        break;
-      default:
-        error.message = "Canvas API: " + response.statusCode;
-    }
-
-    error.response.text = text;
-
-    try {
-      // TODO: find a good "message" in the body and override `error.message`
-      const json = await JSON.parse(text);
-      error.response.json = json;
-      error.response.body = json;
-    } catch (err) {
-      // Don't do anything
-    }
-
-    return error;
+    this.response = response;
   }
 }
 

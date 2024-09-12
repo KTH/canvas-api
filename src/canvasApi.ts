@@ -9,7 +9,7 @@ import {
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
 
-export type CanvasApiResponse = {
+export class CanvasApiResponse {
   /** HTTP status code from Canvas */
   statusCode: number;
 
@@ -29,7 +29,31 @@ export type CanvasApiResponse = {
 
   /** Body without parsing */
   text: string;
-};
+
+  constructor() {
+    this.statusCode = 0;
+    this.headers = {};
+    this.json = undefined;
+    this.body = undefined;
+    this.text = "";
+  }
+
+  async parseBody(response: Dispatcher.ResponseData) {
+    const text = await response.body.text();
+
+    try {
+      this.statusCode = response.statusCode;
+      this.headers = response.headers;
+      this.text = text;
+      this.json = JSON.parse(text);
+      this.body = this.json;
+    } catch (err) {
+      // Do nothing
+    }
+
+    return this;
+  }
+}
 
 export type RequestOptions = {
   timeout?: number;
@@ -128,8 +152,9 @@ export class CanvasApi {
     const normalBody = normalizeBody(body);
     const header = {
       authorization: `Bearer ${this.token}`,
-      "content-type": normalBody instanceof FormData ? undefined : "application/json"
-     }
+      "content-type":
+        normalBody instanceof FormData ? undefined : "application/json",
+    };
 
     const response = await request(url, {
       method,
@@ -138,37 +163,23 @@ export class CanvasApi {
       signal: mergedOptions.timeout
         ? AbortSignal.timeout(mergedOptions.timeout)
         : null,
-    }).catch((err) => {
-      if (err instanceof DOMException && err.name === "TimeoutError") {
-        throw new CanvasApiTimeoutError();
-      }
+    })
+      .then((undiciResponse) =>
+        new CanvasApiResponse().parseBody(undiciResponse)
+      )
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "TimeoutError") {
+          throw new CanvasApiTimeoutError();
+        }
 
-      throw new CanvasApiConnectionError();
-    });
+        throw new CanvasApiConnectionError();
+      });
 
     if (response.statusCode >= 400) {
-      throw await CanvasApiResponseError.fromResponse(response);
+      throw new CanvasApiResponseError(response);
     }
 
-    const text = await response.body.text();
-    const result = {
-      statusCode: response.statusCode,
-      headers: response.headers,
-      body: undefined,
-      json: undefined,
-      text,
-    };
-
-    try {
-      const json = JSON.parse(text);
-
-      result.json = json;
-      result.body = json;
-    } catch (e) {
-      // Do not do anything
-    }
-
-    return result;
+    return response;
   }
 
   /** Performs a GET request to a given endpoint */

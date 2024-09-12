@@ -192,7 +192,7 @@ describe("CanvasApiResponseError", () => {
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
-      {
+      CanvasApiResponse {
         "body": {
           "message": "Missing parameters",
         },
@@ -213,7 +213,7 @@ describe("CanvasApiResponseError", () => {
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
-      {
+      CanvasApiResponse {
         "body": {
           "message": "Method not allowed",
         },
@@ -234,7 +234,7 @@ describe("CanvasApiResponseError", () => {
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(error?.name).toEqual("CanvasApiResponseError");
     expect(error?.response).toMatchInlineSnapshot(`
-      {
+      CanvasApiResponse {
         "body": undefined,
         "headers": {},
         "json": undefined,

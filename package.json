@@ -11,9 +11,9 @@
   "scripts": {
     "format": "eslint && prettier --write .",
     "test": "npm run build && npm run test:lint && npm run test:unit",
-    "test:lint": "eslint src && prettier --check .",
+    "test:lint": "eslint src examples integration-tests && prettier --check .",
     "test:unit": "jest src/",
-    "test:integration": "jest integration-tests/",
+    "test:integration": "jest integration-tests/ --bail",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepublish": "npm run build"
   },

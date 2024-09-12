@@ -2,7 +2,6 @@
 import { CanvasApi, CanvasApiResponseError } from "@kth/canvas-api";
 import { z } from "zod";
 
-
 describe("POST requests with body parameters", () => {
   it("should return right results", async () => {
     const client = new CanvasApi(
@@ -10,14 +9,13 @@ describe("POST requests with body parameters", () => {
       process.env.CANVAS_API_TOKEN!
     );
 
-    const enrollments = await client
-      .request("courses/1/enrollments","POST",  {
-        enrollment: {
-          user_id: "27505",
-          role_id: "3",
-          enrollment_state: "active",
-        },
-      })
-      expect(enrollments.statusCode).toEqual(200);
+    const enrollments = await client.request("courses/1/enrollments", "POST", {
+      enrollment: {
+        user_id: "27505",
+        role_id: "3",
+        enrollment_state: "active",
+      },
+    });
+    expect(enrollments.statusCode).toEqual(200);
   }, 10000);
 });

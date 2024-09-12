@@ -28,7 +28,7 @@ describe("GET requests without parameters", () => {
       process.env.CANVAS_API_URL!,
       process.env.CANVAS_API_TOKEN!
     );
-    const { json, statusCode, text } = await client.get("accounts/1");
+    const { json, statusCode } = await client.get("accounts/1");
     expect(statusCode).toBe(200);
     expect(accountSchema.parse(json)).toMatchInlineSnapshot(`
       {

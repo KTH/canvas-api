@@ -1,6 +1,5 @@
 /** Make simple requests (GET, POST, PUT, etc.) to actual Canvas */
-import { CanvasApi, CanvasApiResponseError } from "@kth/canvas-api";
-import { z } from "zod";
+import { CanvasApi } from "@kth/canvas-api";
 
 describe("POST requests with body parameters", () => {
   it("should return right results", async () => {

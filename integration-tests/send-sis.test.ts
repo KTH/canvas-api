@@ -21,7 +21,7 @@ describe("Send SIS Import CSV", () => {
       [await readFile(resolve(__dirname, "./test.csv"))],
       "test.csv"
     );
-    const { json, statusCode, text } = await client.sisImport(file);
+    const { json, statusCode } = await client.sisImport(file);
     expect(statusCode).toBe(200);
     expect(sisImportSchema.safeParse(json)).toBeTruthy();
   }, 10000);

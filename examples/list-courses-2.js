@@ -3,10 +3,10 @@
 require("dotenv").config();
 const canvasApiUrl = process.env.CANVAS_API_URL;
 const canvasApiToken = process.env.CANVAS_API_TOKEN;
-const Canvas = require("../dist/index").default;
+const { CanvasApi } = require("@kth/canvas-api");
 
 async function start() {
-  const canvas = new Canvas(canvasApiUrl, canvasApiToken);
+  const canvas = new CanvasApi(canvasApiUrl, canvasApiToken);
 
   const courses = canvas.listItems("accounts/1/courses");
 

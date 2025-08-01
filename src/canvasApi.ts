@@ -6,6 +6,7 @@ import {
   CanvasApiConnectionError,
   CanvasApiResponseError,
   CanvasApiTimeoutError,
+  getSlimStackTrace,
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
 
@@ -137,6 +138,7 @@ export class CanvasApi {
 
   /** Internal function. Low-level function to perform requests to Canvas API */
   private async _request(
+    stackTrace: string | undefined,
     endpoint: string,
     method: Dispatcher.HttpMethod,
     params?: QueryParams,
@@ -156,14 +158,6 @@ export class CanvasApi {
         normalBody instanceof FormData ? undefined : "application/json",
     };
 
-    // We declare the Error objects here to put the right stack trace
-    const responseError = new CanvasApiResponseError();
-    const timeoutError = new CanvasApiTimeoutError();
-    const connectionError = new CanvasApiConnectionError();
-    Error.captureStackTrace(responseError);
-    Error.captureStackTrace(timeoutError);
-    Error.captureStackTrace(connectionError);
-
     const response = await request(url, {
       method,
       headers: header,
@@ -177,15 +171,14 @@ export class CanvasApi {
       )
       .catch((err) => {
         if (err instanceof DOMException && err.name === "TimeoutError") {
-          throw timeoutError;
+          throw new CanvasApiTimeoutError(stackTrace);
         }
 
-        throw connectionError;
+        throw new CanvasApiConnectionError(stackTrace);
       });
 
     if (response.statusCode >= 400) {
-      responseError.response = response;
-      throw responseError;
+      throw new CanvasApiResponseError(stackTrace, response);
     }
 
     return response;
@@ -197,31 +190,47 @@ export class CanvasApi {
     queryParams: QueryParams = {},
     options: RequestOptions = {}
   ): Promise<CanvasApiResponse> {
-    return this._request(endpoint, "GET", queryParams, undefined, options);
+    // We capture the stack trace here so we can hide the internals of this lib thus
+    // making it point directly to the business logic for operational errors.
+    const tmpErr = { stack: undefined };
+    Error.captureStackTrace(tmpErr, this.get);
+
+    return this._request(
+      tmpErr.stack,
+      endpoint,
+      "GET",
+      queryParams,
+      undefined,
+      options
+    );
   }
 
   listPages(
     endpoint: string,
     queryParams: QueryParams = {},
-    options: RequestOptions = {}
+    options: RequestOptions = {},
+    stackTrace: string | undefined = undefined,
   ) {
     const t = this;
-    async function* generator() {
-      const first = await t._request(
-        endpoint,
-        "GET",
-        queryParams,
-        undefined,
-        options
-      );
 
-      yield first;
-      let url = first.headers.link && getNextUrl(first.headers.link);
+    stackTrace ??= getSlimStackTrace(this.listPages);
+    
+    async function* generator() {
+      let url: string | null | undefined = endpoint;
 
       while (url) {
-        const response = await t._request(url, "GET", {}, undefined, options);
+        const response: CanvasApiResponse = await t._request(
+          stackTrace,
+          url,
+          "GET",
+          queryParams,
+          undefined,
+          options
+        );
         yield response;
         url = response.headers.link && getNextUrl(response.headers.link);
+        // Query params are only used in the first call with endpoint
+        queryParams = {};
       }
     }
 
@@ -234,10 +243,13 @@ export class CanvasApi {
     options: RequestOptions = {}
   ) {
     const t = this;
+
+    const stackTrace = getSlimStackTrace(this.listItems);
+
     async function* generator() {
-      for await (const page of t.listPages(endpoint, queryParams, options)) {
+      for await (const page of t.listPages(endpoint, queryParams, options, stackTrace)) {
         if (!Array.isArray(page.json)) {
-          throw new CanvasApiPaginationError(page);
+          throw new CanvasApiPaginationError(stackTrace, page);
         }
 
         for (const element of page.json) {
@@ -254,19 +266,38 @@ export class CanvasApi {
     body?: unknown,
     options: RequestOptions = {}
   ) {
+    const stackTrace = getSlimStackTrace(this.request);
+
     if (method === "GET") {
-      throw new TypeError(
+      const err = new TypeError(
         "HTTP GET not allowed for this 'request' method. Use the methods 'get', 'listPages' or 'listItems' instead"
       );
+      err.stack = stackTrace;
+      throw err;
     }
 
-    return this._request(endpoint, method, undefined, body, options);
+    return this._request(
+      stackTrace,
+      endpoint,
+      method,
+      undefined,
+      body,
+      options
+    );
   }
 
   async sisImport(attachment: File): Promise<CanvasApiResponse> {
     const formData = new FormData();
     formData.set("attachment", attachment);
 
-    return this._request("accounts/1/sis_imports", "POST", undefined, formData);
+    const stackTrace = getSlimStackTrace(this.sisImport);
+
+    return this._request(
+      stackTrace,
+      "accounts/1/sis_imports",
+      "POST",
+      undefined,
+      formData
+    );
   }
 }

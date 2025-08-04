@@ -66,7 +66,8 @@ export class CanvasApiPaginationError extends CanvasApiError {
   }
 }
 
-export function getSlimStackTrace(fnCaller: Function) {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function getSlimStackTrace(fnCaller: (...args: any[]) => any) {
   // We capture the stack trace here so we can hide the internals of this lib thus
   // making it point directly to the business logic for operational errors.
   const tmpErr = { stack: undefined };

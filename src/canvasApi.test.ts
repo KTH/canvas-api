@@ -7,7 +7,7 @@ import {
   Interceptable,
 } from "undici";
 import { createServer } from "node:http";
-import { CanvasApiError } from "./canvasApiError";
+import { CanvasApiResponseError } from "./canvasApiError";
 
 describe("queryParameters", () => {
   it("should parse primitives parameters correctly", () => {
@@ -299,7 +299,6 @@ describe("method-level timeout", () => {
   });
 });
 
-
 describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
   let mockPool: Interceptable;
 
@@ -309,7 +308,6 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
 
     mockPool = mockAgent.get("https://canvas.local");
   });
-
 
   it(".get CanvasApiResponseError", async () => {
     mockPool
@@ -335,14 +333,17 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     try {
       for await (const page of canvas.listPages("call-list-pages")) {
         // Do nothing, it should throw an error
+        page;
       }
-    } catch (e: any) {
-      error = e;
+    } catch (e: unknown) {
+      if (e instanceof CanvasApiResponseError) {
+        error = e;
+      }
     }
 
-    const stackRows = error.stack.split("\n");
-    expect(error.name).toEqual("CanvasApiResponseError");
-    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    const stackRows = error?.stack?.split("\n") ?? [];
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error?.name}: ${error?.message}`);
     expect(stackRows[1]).toContain(__filename);
   });
 
@@ -356,14 +357,17 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     try {
       for await (const page of canvas.listItems("call-list-items")) {
         // Do nothing, it should throw an error
+        page;
       }
-    } catch (e: any) {
-      error = e;
+    } catch (e: unknown) {
+      if (e instanceof CanvasApiResponseError) {
+        error = e;
+      }
     }
 
-    const stackRows = error.stack.split("\n");
-    expect(error.name).toEqual("CanvasApiResponseError");
-    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    const stackRows = error?.stack?.split("\n") ?? [];
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error?.name}: ${error?.message}`);
     expect(stackRows[1]).toContain(__filename);
   });
 
@@ -386,7 +390,7 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
       .intercept({ path: "/accounts/1/sis_imports", method: "POST" })
       .reply(400, '{"message": "400 error"}');
 
-    const fakeFile = new File([], 'empty.txt', { type: 'text/plain' });
+    const fakeFile = new File([], "empty.txt", { type: "text/plain" });
     const canvas = new CanvasApi("https://canvas.local/", "");
     const error = await canvas.sisImport(fakeFile).catch((e) => e);
 

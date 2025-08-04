@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { request, FormData } from "undici";
+import { FormData } from "undici";
 import type { Dispatcher } from "undici";
 import {
   CanvasApiPaginationError,
@@ -9,6 +9,7 @@ import {
   getSlimStackTrace,
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
+import { rateLimitedRequestFactory } from "./rateLimiter";
 
 export class CanvasApiResponse {
   /** HTTP status code from Canvas */
@@ -120,20 +121,32 @@ export function stringifyQueryParameters(parameters: QueryParams) {
   return keyValues.length === 0 ? "" : "?" + keyValues.join("&");
 }
 
+let request: ReturnType<typeof rateLimitedRequestFactory> | undefined =
+  undefined;
 export class CanvasApi {
   apiUrl: URL;
   token: string;
   options: RequestOptions;
 
-  constructor(apiUrl: string, token: string, options: RequestOptions = {}) {
+  constructor(
+    apiUrl: string,
+    token: string,
+    options: RequestOptions & { rateLimitIntervalMs?: number } = {}
+  ) {
     // For correct parsing, check that `apiUrl` contains a trailing slash
     if (!apiUrl.endsWith("/")) {
       this.apiUrl = new URL(apiUrl + "/");
     } else {
       this.apiUrl = new URL(apiUrl);
     }
+    const { rateLimitIntervalMs, ...opts } = options;
+
     this.token = token;
-    this.options = options;
+    this.options = opts;
+
+    request ??= rateLimitedRequestFactory({
+      limitIntervalMs: rateLimitIntervalMs ?? 1000,
+    });
   }
 
   /** Internal function. Low-level function to perform requests to Canvas API */
@@ -158,7 +171,8 @@ export class CanvasApi {
         normalBody instanceof FormData ? undefined : "application/json",
     };
 
-    const response = await request(url, {
+    // The request function is created in the constructor
+    const response = await request!(url, {
       method,
       headers: header,
       body: normalBody,
@@ -209,12 +223,12 @@ export class CanvasApi {
     endpoint: string,
     queryParams: QueryParams = {},
     options: RequestOptions = {},
-    stackTrace: string | undefined = undefined,
+    stackTrace: string | undefined = undefined
   ) {
     const t = this;
 
     stackTrace ??= getSlimStackTrace(this.listPages);
-    
+
     async function* generator() {
       let url: string | null | undefined = endpoint;
 
@@ -247,7 +261,12 @@ export class CanvasApi {
     const stackTrace = getSlimStackTrace(this.listItems);
 
     async function* generator() {
-      for await (const page of t.listPages(endpoint, queryParams, options, stackTrace)) {
+      for await (const page of t.listPages(
+        endpoint,
+        queryParams,
+        options,
+        stackTrace
+      )) {
         if (!Array.isArray(page.json)) {
           throw new CanvasApiPaginationError(stackTrace, page);
         }

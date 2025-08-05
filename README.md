@@ -133,3 +133,20 @@ const parsed = accountSchema.parse(json);
 ### Error handling
 
 This library returns instances of `CanvasApiError`. Check the [file `src/canvasApiError.ts`](./src/canvasApiError.ts) to see all the error classes that this library throws
+
+## Development
+
+### Dev-Env as code with `nix-shell`
+
+We use nix package manager to get a consistent developer experience across devices (Linux/macOS):
+
+- shell.nix -- equivalent of package.json but for system packages
+- .nix/source.json -- equivalent of package-lock.json but pinned to a commit in the nix package repo
+
+[Installing the Required Nix Tools](https://confluence.sys.kth.se/confluence/pages/viewpage.action?pageId=193409170) and setting up your editor. This page also contains instructions or pointers for how to set up your editor.
+
+Run `nix-shell` in the root directory and it will install the required packages for the project. You won't need nvm or similar to switch Node.js version and you will get the correct version of Node.js, az, openssl, etc.
+
+#### Setting up your own environment
+
+The Nixpkgs-setup is a declarative configuration of the development environment. You can choose to install the packages manually on your local system.

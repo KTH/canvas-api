@@ -4,8 +4,10 @@ import {
   setGlobalDispatcher,
   getGlobalDispatcher,
   Dispatcher,
+  Interceptable,
 } from "undici";
 import { createServer } from "node:http";
+import { CanvasApiResponseError } from "./canvasApiError";
 
 describe("queryParameters", () => {
   it("should parse primitives parameters correctly", () => {
@@ -294,5 +296,107 @@ describe("method-level timeout", () => {
     expect(error?.name).toEqual("CanvasApiTimeoutError");
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(t2 - t1).toBeLessThan(120);
+  });
+});
+
+describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
+  let mockPool: Interceptable;
+
+  beforeEach(() => {
+    const mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+
+    mockPool = mockAgent.get("https://canvas.local");
+  });
+
+  it(".get CanvasApiResponseError", async () => {
+    mockPool
+      .intercept({ path: "/call-get", method: "GET" })
+      .reply(400, '{"message": "400 error"}');
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.get("call-get").catch((e) => e);
+
+    const stackRows = error.stack.split("\n");
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
+
+  it(".listPages CanvasApiResponseError", async () => {
+    mockPool
+      .intercept({ path: "/call-list-pages", method: "GET" })
+      .reply(400, '{"message": "400 error"}');
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    let error = undefined;
+    try {
+      for await (const page of canvas.listPages("call-list-pages")) {
+        // Do nothing, it should throw an error
+        page;
+      }
+    } catch (e: unknown) {
+      if (e instanceof CanvasApiResponseError) {
+        error = e;
+      }
+    }
+
+    const stackRows = error?.stack?.split("\n") ?? [];
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error?.name}: ${error?.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
+
+  it(".listItems CanvasApiResponseError", async () => {
+    mockPool
+      .intercept({ path: "/call-list-items", method: "GET" })
+      .reply(400, '{"message": "400 error"}');
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    let error = undefined;
+    try {
+      for await (const page of canvas.listItems("call-list-items")) {
+        // Do nothing, it should throw an error
+        page;
+      }
+    } catch (e: unknown) {
+      if (e instanceof CanvasApiResponseError) {
+        error = e;
+      }
+    }
+
+    const stackRows = error?.stack?.split("\n") ?? [];
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error?.name}: ${error?.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
+
+  it(".request CanvasApiResponseError", async () => {
+    mockPool
+      .intercept({ path: "/call-request", method: "POST" })
+      .reply(400, '{"message": "400 error"}');
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.request("call-request", "POST").catch((e) => e);
+
+    const stackRows = error.stack.split("\n");
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
+
+  it(".sisImport CanvasApiResponseError", async () => {
+    mockPool
+      .intercept({ path: "/accounts/1/sis_imports", method: "POST" })
+      .reply(400, '{"message": "400 error"}');
+
+    const fakeFile = new File([], "empty.txt", { type: "text/plain" });
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.sisImport(fakeFile).catch((e) => e);
+
+    const stackRows = error.stack.split("\n");
+    expect(error?.name).toEqual("CanvasApiResponseError");
+    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    expect(stackRows[1]).toContain(__filename);
   });
 });

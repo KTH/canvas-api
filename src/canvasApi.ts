@@ -3,10 +3,11 @@ import { FormData } from "undici";
 import type { Dispatcher } from "undici";
 import {
   CanvasApiPaginationError,
-  CanvasApiConnectionError,
+  CanvasApiRequestError,
   CanvasApiResponseError,
   CanvasApiTimeoutError,
   getSlimStackTrace,
+  canvasApiErrorDecorator,
 } from "./canvasApiError";
 import { ExtendedGenerator } from "./extendedGenerator";
 import { rateLimitedRequestFactory } from "./rateLimiter";
@@ -64,7 +65,7 @@ export type RequestOptions = {
 export type QueryParams = Record<string, string | number | (string | number)[]>;
 
 /** Converts an object to something that can be passed as body in a request */
-export function normalizeBody(obj: unknown) {
+export function normalizeBody(stackTrace: string | undefined, obj: unknown) {
   if (typeof obj === "undefined") {
     return undefined;
   }
@@ -76,7 +77,13 @@ export function normalizeBody(obj: unknown) {
   try {
     return JSON.stringify(obj);
   } catch (err) {
-    throw new CanvasApiConnectionError();
+    if (err instanceof Error) {
+      throw canvasApiErrorDecorator(
+        new CanvasApiRequestError(err.message),
+        stackTrace
+      );
+    }
+    throw err;
   }
 }
 
@@ -164,18 +171,21 @@ export class CanvasApi {
     if (params) {
       url += stringifyQueryParameters(params);
     }
-    const normalBody = normalizeBody(body);
     const header = {
       authorization: `Bearer ${this.token}`,
       "content-type":
-        normalBody instanceof FormData ? undefined : "application/json",
+        body instanceof FormData
+          ? undefined
+          : typeof body === "string"
+          ? "text/plain; charset=utf-8"
+          : "application/json",
     };
 
     // The request function is created in the constructor
     const response = await request!(url, {
       method,
       headers: header,
-      body: normalBody,
+      body: normalizeBody(stackTrace, body),
       signal: mergedOptions.timeout
         ? AbortSignal.timeout(mergedOptions.timeout)
         : null,
@@ -185,14 +195,23 @@ export class CanvasApi {
       )
       .catch((err) => {
         if (err instanceof DOMException && err.name === "TimeoutError") {
-          throw new CanvasApiTimeoutError(stackTrace);
+          throw canvasApiErrorDecorator(
+            new CanvasApiTimeoutError(),
+            stackTrace
+          );
         }
 
-        throw new CanvasApiConnectionError(stackTrace);
+        throw canvasApiErrorDecorator(
+          new CanvasApiRequestError(err.message),
+          stackTrace
+        );
       });
 
     if (response.statusCode >= 400) {
-      throw new CanvasApiResponseError(stackTrace, response);
+      throw canvasApiErrorDecorator(
+        new CanvasApiResponseError(response),
+        stackTrace
+      );
     }
 
     return response;
@@ -268,7 +287,10 @@ export class CanvasApi {
         stackTrace
       )) {
         if (!Array.isArray(page.json)) {
-          throw new CanvasApiPaginationError(stackTrace, page);
+          throw canvasApiErrorDecorator(
+            new CanvasApiPaginationError(page),
+            stackTrace
+          );
         }
 
         for (const element of page.json) {

@@ -2,5 +2,5 @@ export { CanvasApi } from "./canvasApi";
 export {
   CanvasApiError,
   CanvasApiResponseError,
-  CanvasApiConnectionError,
+  CanvasApiRequestError,
 } from "./canvasApiError";

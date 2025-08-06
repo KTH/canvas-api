@@ -17,47 +17,40 @@ export class CanvasApiResponseError extends CanvasApiError {
    * Note: this constructor does not parse the body in `response`.
    * Use {@link CanvasAPIResponseError.fromResponse} instead
    */
-  constructor(stack: string | undefined, response = new CanvasApiResponse()) {
+  constructor(response = new CanvasApiResponse()) {
     super("Canvas API response error");
     this.name = "CanvasApiResponseError";
-    if (stack !== undefined) {
-      this.stack = stack.replace("Error", `${this.name}: ${this.message}`);
-    }
     this.response = response;
   }
 }
 
 /**
- * Thrown when there was some error before reaching Canvas
+ * Thrown when there was some error with the request
  */
-export class CanvasApiConnectionError extends CanvasApiError {
-  constructor(stack?: string | undefined) {
+export class CanvasApiRequestError extends CanvasApiError {
+  constructor(message?: string) {
     // TODO
     super(
-      "Canvas API Connection Error: some error happen before reaching Canvas API"
+      `Canvas API Request Error: ${
+        message ?? "there is something wrong with your request"
+      }`
     );
-    this.name = "CanvasApiConnectionError";
-    if (stack !== undefined) {
-      this.stack = stack.replace("Error", `${this.name}: ${this.message}`);
-    }
+    this.name = "CanvasApiRequestError";
   }
 }
 
 /** Thrown when a request times out before getting any response */
 export class CanvasApiTimeoutError extends CanvasApiError {
-  constructor(stack?: string | undefined) {
+  constructor() {
     super("Canvas API timeout error");
     this.name = "CanvasApiTimeoutError";
-    if (stack !== undefined) {
-      this.stack = stack.replace("Error", `${this.name}: ${this.message}`);
-    }
   }
 }
 
 export class CanvasApiPaginationError extends CanvasApiError {
   response: CanvasApiResponse;
 
-  constructor(stack: string | undefined, response: CanvasApiResponse) {
+  constructor(response: CanvasApiResponse) {
     super(
       "This endpoint did not responded with a list. Use `listPages` or `get` instead"
     );
@@ -73,4 +66,17 @@ export function getSlimStackTrace(fnCaller: (...args: any[]) => any) {
   const tmpErr = { stack: undefined };
   Error.captureStackTrace(tmpErr, fnCaller);
   return tmpErr.stack;
+}
+
+export function canvasApiErrorDecorator(
+  error:
+    | CanvasApiPaginationError
+    | CanvasApiTimeoutError
+    | CanvasApiRequestError,
+  stack: string | undefined
+) {
+  if (stack !== undefined) {
+    error.stack = stack.replace("Error", `${error.name}: ${error.message}`);
+  }
+  return error;
 }

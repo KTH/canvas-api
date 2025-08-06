@@ -399,4 +399,16 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
     expect(stackRows[1]).toContain(__filename);
   });
+
+  it(".request CanvasApiRequestError with malformed request body", async () => {
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas
+      .request("call-request", "POST", 123n)
+      .catch((e) => e); // Can't serialize BigInt
+
+    const stackRows = error.stack.split("\n");
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
 });

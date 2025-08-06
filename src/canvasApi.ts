@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { FormData } from "undici";
+import { FormData, request as undiciRequest } from "undici";
 import type { Dispatcher } from "undici";
 import {
   CanvasApiPaginationError,
@@ -128,9 +128,12 @@ export function stringifyQueryParameters(parameters: QueryParams) {
   return keyValues.length === 0 ? "" : "?" + keyValues.join("&");
 }
 
-let request: ReturnType<typeof rateLimitedRequestFactory> | undefined =
-  undefined;
+let requestWithRateLimitThrottling:
+  | ReturnType<typeof rateLimitedRequestFactory>
+  | undefined = undefined;
 export class CanvasApi {
+  __request__: ReturnType<typeof rateLimitedRequestFactory>;
+
   apiUrl: URL;
   token: string;
   options: RequestOptions;
@@ -138,7 +141,10 @@ export class CanvasApi {
   constructor(
     apiUrl: string,
     token: string,
-    options: RequestOptions & { rateLimitIntervalMs?: number } = {}
+    options: RequestOptions & {
+      rateLimitIntervalMs?: number;
+      disableThrottling?: boolean;
+    } = {}
   ) {
     // For correct parsing, check that `apiUrl` contains a trailing slash
     if (!apiUrl.endsWith("/")) {
@@ -146,14 +152,20 @@ export class CanvasApi {
     } else {
       this.apiUrl = new URL(apiUrl);
     }
-    const { rateLimitIntervalMs, ...opts } = options;
+    const { rateLimitIntervalMs, disableThrottling, ...opts } = options;
 
     this.token = token;
     this.options = opts;
 
-    request ??= rateLimitedRequestFactory({
-      limitIntervalMs: rateLimitIntervalMs ?? 1000,
-    });
+    // We can disable the rate limit support for individual instances if required
+    if (disableThrottling) {
+      this.__request__ = undiciRequest;
+    } else {
+      requestWithRateLimitThrottling ??= rateLimitedRequestFactory({
+        limitIntervalMs: rateLimitIntervalMs ?? 1000,
+      });
+      this.__request__ = requestWithRateLimitThrottling;
+    }
   }
 
   /** Internal function. Low-level function to perform requests to Canvas API */
@@ -182,7 +194,7 @@ export class CanvasApi {
     };
 
     // The request function is created in the constructor
-    const response = await request!(url, {
+    const response = await this.__request__(url, {
       method,
       headers: header,
       body: normalizeBody(stackTrace, body),

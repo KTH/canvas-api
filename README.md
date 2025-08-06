@@ -108,9 +108,23 @@ for await (const course of courses) {
 }
 ```
 
+### Rate Limiting
+
+CanvasApi will automatically handle rate limiting by throttling calls. Throttling is applied globally for all your CanvasApi instances. This is done using a FIFO-queue where each call is resolved sequentially. If you have slow calls that you want to resolve in parallell you can disable throttling:
+
+```ts
+const canvas = new CanvasApi("https://canvas.local/", "");
+
+const canvasWithoutThrottling = new CanvasApi("https://canvas.local/", "", {
+  disableThrottling: true,
+});
+```
+
+You can mix instances with and without throttling.
+
 ### Type safety
 
-This library parses JSON responses from Canvas and convert them as JavaScript object. If you want to check types in runtime, use a library like Zod:
+This library parses JSON responses from Canvas and converts them to JavaScript object. If you want to check types at runtime, use a validation library:
 
 ```ts
 import { CanvasApi } from "@kth/canvas-api";

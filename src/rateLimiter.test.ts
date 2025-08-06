@@ -45,4 +45,28 @@ describe("Rate limiter works", () => {
     expect(err.response.statusCode).toEqual(403);
     expect(err.response.text).toEqual("403 Forbidden (Permissions)");
   });
+
+  it("but can be turned off", async () => {
+    mockPool
+      .intercept({ path: "/call", method: "GET" })
+      .reply(403, "403 Forbidden (Rate Limit Exceeded)");
+
+    mockPool
+      .intercept({ path: "/call", method: "GET" })
+      .reply(200, '{"msg": "ok"}');
+
+    const canvas = new CanvasApi("https://canvas.local/", "", {
+      disableThrottling: true,
+    });
+
+    const start = performance.now();
+    const err = await canvas.get("call").catch((e) => e);
+    const res = await canvas.get("call");
+    const end = performance.now();
+
+    expect(err).toBeDefined();
+    expect(res.json.msg).toEqual("ok");
+    // The reset is evert 1000ms nad calls are resolved locally
+    expect(end - start).toBeLessThan(50);
+  });
 });

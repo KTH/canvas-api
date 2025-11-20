@@ -185,6 +185,7 @@ export class CanvasApi {
     }
     const header = {
       authorization: `Bearer ${this.token}`,
+      "User-Agent": "@kth/canvas-api",
       "content-type":
         body instanceof FormData
           ? undefined

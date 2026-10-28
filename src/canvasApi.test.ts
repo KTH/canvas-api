@@ -413,11 +413,13 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
   });
 });
 
+// Guards against request forgery: a request to another origin leaks the token
 describe("Requests are only sent to the configured Canvas origin", () => {
   let mockAgent: MockAgent;
   let canvasPool: Interceptable;
   let otherPool: Interceptable;
   let httpCanvasPool: Interceptable;
+  let prefixPool: Interceptable;
 
   beforeEach(() => {
     mockAgent = new MockAgent();
@@ -426,6 +428,7 @@ describe("Requests are only sent to the configured Canvas origin", () => {
     canvasPool = mockAgent.get("https://canvas.local");
     otherPool = mockAgent.get("https://other.local");
     httpCanvasPool = mockAgent.get("http://canvas.local");
+    prefixPool = mockAgent.get("https://canvas.local.other.local");
   });
 
   it("refuses an absolute URL to another host", async () => {
@@ -435,6 +438,7 @@ describe("Requests are only sent to the configured Canvas origin", () => {
     const error = await canvas.get("https://other.local/other").catch((e) => e);
 
     expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
     expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
     expect(mockAgent.pendingInterceptors()).toHaveLength(1);
   });
@@ -446,6 +450,7 @@ describe("Requests are only sent to the configured Canvas origin", () => {
     const error = await canvas.get("//other.local/other").catch((e) => e);
 
     expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
     expect(mockAgent.pendingInterceptors()).toHaveLength(1);
   });
 
@@ -458,6 +463,34 @@ describe("Requests are only sent to the configured Canvas origin", () => {
     const error = await canvas.get("http://canvas.local/other").catch((e) => e);
 
     expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  // These URLs start with "https://canvas.local" but point to another host
+  it("refuses a URL with the configured host as userinfo", async () => {
+    otherPool.intercept({ path: "/other", method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas
+      .get("https://canvas.local@other.local/other")
+      .catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses a host that only starts with the configured host", async () => {
+    prefixPool.intercept({ path: "/other", method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas
+      .get("https://canvas.local.other.local/other")
+      .catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
     expect(mockAgent.pendingInterceptors()).toHaveLength(1);
   });
 
@@ -478,6 +511,7 @@ describe("Requests are only sent to the configured Canvas origin", () => {
       .catch((e) => e);
 
     expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/not the configured Canvas origin/);
     expect(mockAgent.pendingInterceptors()).toHaveLength(1);
   });
 });

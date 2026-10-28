@@ -412,3 +412,72 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     expect(stackRows[1]).toContain(__filename);
   });
 });
+
+describe("Requests are only sent to the configured Canvas origin", () => {
+  let mockAgent: MockAgent;
+  let canvasPool: Interceptable;
+  let otherPool: Interceptable;
+  let httpCanvasPool: Interceptable;
+
+  beforeEach(() => {
+    mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+
+    canvasPool = mockAgent.get("https://canvas.local");
+    otherPool = mockAgent.get("https://other.local");
+    httpCanvasPool = mockAgent.get("http://canvas.local");
+  });
+
+  it("refuses an absolute URL to another host", async () => {
+    otherPool.intercept({ path: "/other", method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.get("https://other.local/other").catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses a protocol-relative URL to another host", async () => {
+    otherPool.intercept({ path: "/other", method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.get("//other.local/other").catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses a URL with another scheme on the same host", async () => {
+    httpCanvasPool
+      .intercept({ path: "/other", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas.get("http://canvas.local/other").catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses to follow a `next` link to another host", async () => {
+    canvasPool
+      .intercept({ path: "/courses/page1", method: "GET" })
+      .reply(200, [1, 2, 3], {
+        headers: { link: '<https://other.local/courses/page2>; rel="next"' },
+      });
+    otherPool
+      .intercept({ path: "/courses/page2", method: "GET" })
+      .reply(200, [4, 5]);
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas
+      .listItems("courses/page1")
+      .toArray()
+      .catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+});

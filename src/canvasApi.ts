@@ -177,7 +177,18 @@ export class CanvasApi {
     body?: unknown,
     options: RequestOptions = {}
   ): Promise<CanvasApiResponse> {
-    let url = new URL(endpoint, this.apiUrl).toString();
+    const resolvedUrl = new URL(endpoint, this.apiUrl);
+
+    if (resolvedUrl.origin !== this.apiUrl.origin) {
+      throw canvasApiErrorDecorator(
+        new CanvasApiRequestError(
+          `the endpoint resolves to "${resolvedUrl.origin}", which is not the configured Canvas origin "${this.apiUrl.origin}"`
+        ),
+        stackTrace
+      );
+    }
+
+    let url = resolvedUrl.toString();
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {

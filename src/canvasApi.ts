@@ -195,12 +195,18 @@ export class CanvasApi {
       );
     }
 
-    let url = resolvedUrl.toString();
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {
       try {
-        url += stringifyQueryParameters(params);
+        const query = stringifyQueryParameters(params);
+
+        if (query) {
+          // The endpoint can already have a query string
+          resolvedUrl.search = resolvedUrl.search
+            ? `${resolvedUrl.search}&${query.slice(1)}`
+            : query;
+        }
       } catch (err) {
         if (err instanceof URIError) {
           throw canvasApiErrorDecorator(
@@ -213,6 +219,7 @@ export class CanvasApi {
         throw err;
       }
     }
+    const url = resolvedUrl.toString();
     const header = {
       authorization: `Bearer ${this.token}`,
       "User-Agent": "@kth/canvas-api",

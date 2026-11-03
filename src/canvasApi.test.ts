@@ -457,6 +457,77 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
   });
 });
 
+describe("Query parameters are merged with the endpoint", () => {
+  let defaultAgent: Dispatcher;
+  let mockAgent: MockAgent;
+  let mockPool: Interceptable;
+
+  beforeEach(() => {
+    defaultAgent = getGlobalDispatcher();
+    mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+    mockPool = mockAgent.get("https://canvas.local");
+  });
+
+  afterEach(() => {
+    setGlobalDispatcher(defaultAgent);
+  });
+
+  it("appends to a query string in the endpoint", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?per_page=10&search_term=a%26b",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?per_page=10", {
+      search_term: "a&b",
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("appends arrays to a query string in the endpoint", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?include[]=a&role[]=3&role[]=6",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?include[]=a", {
+      role: [3, 6],
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends the parameters when the endpoint has a fragment", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=x", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses#a", { q: "x" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("keeps the query string in the endpoint without parameters", async () => {
+    mockPool
+      .intercept({ path: "/courses?per_page=10", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?per_page=10");
+
+    expect(statusCode).toEqual(200);
+  });
+});
+
 // Guards against request forgery: a request to another origin leaks the token
 describe("Requests are only sent to the configured Canvas origin", () => {
   let mockAgent: MockAgent;

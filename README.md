@@ -82,7 +82,7 @@ const { json } = await canvas.get("courses/1/enrollments", {
 });
 ```
 
-Keys and values are percent-encoded by this library, so pass them unencoded. If you encode them yourself, they will be encoded twice.
+Keys and values are percent-encoded by this library, so pass them unencoded. If you encode them yourself, they will be encoded twice. If `endpoint` already has a query string, the parameters are added to it.
 
 > ‼️ **Warning!**
 >

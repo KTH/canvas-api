@@ -45,6 +45,37 @@ describe("queryParameters", () => {
     const expected = "";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
+
+  it("should not let values inject extra parameters", () => {
+    const input = { search_term: "foo&as_user_id=2" };
+    const expected = "?search_term=foo%26as_user_id%3D2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let array values inject extra parameters", () => {
+    const input = { role: ["3&as_user_id=2", 10] };
+    const expected = "?role[]=3%26as_user_id%3D2&role[]=10";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let keys inject extra parameters", () => {
+    const input = { "a=1&as_user_id": 2 };
+    const expected = "?a%3D1%26as_user_id=2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should encode fragment, percent and space characters", () => {
+    const input = { q: "a#b%20 c" };
+    const expected = "?q=a%23b%2520%20c";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should round-trip special characters as a single parameter", () => {
+    const value = "foo&as_user_id=2#åäö+";
+    const query = stringifyQueryParameters({ search_term: value });
+    const parsed = new URLSearchParams(query);
+    expect([...parsed.entries()]).toEqual([["search_term", value]]);
+  });
 });
 
 describe("listItems", () => {
@@ -408,6 +439,19 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
 
     const stackRows = error.stack.split("\n");
     expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
+    expect(stackRows[1]).toContain(__filename);
+  });
+
+  it(".get CanvasApiRequestError with invalid Unicode in query parameters", async () => {
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const error = await canvas
+      .get("call-get", { search_term: "\uD800" }) // Lone surrogate
+      .catch((e) => e);
+
+    const stackRows = error.stack.split("\n");
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/invalid Unicode/);
     expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
     expect(stackRows[1]).toContain(__filename);
   });

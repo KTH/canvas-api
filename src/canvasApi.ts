@@ -106,8 +106,14 @@ export function getNextUrl(linkHeader: string | string[]) {
  * Example:
  *
  * ```
- * stringifyQueryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
+ * stringifyQueryParameters({ role: [3, 10] }); // returns "?role[]=3&role[]=10"
  *
+ * ```
+ *
+ * Keys and values are percent-encoded, so they must be passed unencoded:
+ *
+ * ```
+ * stringifyQueryParameters({ q: "a&b=c" }); // returns "?q=a%26b%3Dc"
  * ```
  */
 export function stringifyQueryParameters(parameters: QueryParams) {
@@ -115,13 +121,14 @@ export function stringifyQueryParameters(parameters: QueryParams) {
 
   for (const key in parameters) {
     const value = parameters[key];
+    const encodedKey = encodeURIComponent(key);
 
     if (Array.isArray(value)) {
       for (const v of value) {
-        keyValues.push(`${key}[]=${v}`);
+        keyValues.push(`${encodedKey}[]=${encodeURIComponent(v)}`);
       }
     } else {
-      keyValues.push(`${key}=${value}`);
+      keyValues.push(`${encodedKey}=${encodeURIComponent(value)}`);
     }
   }
 
@@ -192,7 +199,19 @@ export class CanvasApi {
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {
-      url += stringifyQueryParameters(params);
+      try {
+        url += stringifyQueryParameters(params);
+      } catch (err) {
+        if (err instanceof URIError) {
+          throw canvasApiErrorDecorator(
+            new CanvasApiRequestError(
+              "the query parameters contain invalid Unicode"
+            ),
+            stackTrace
+          );
+        }
+        throw err;
+      }
     }
     const header = {
       authorization: `Bearer ${this.token}`,

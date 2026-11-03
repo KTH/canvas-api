@@ -70,6 +70,37 @@ const { json } = await canvas.request(
 console.log(json);
 ```
 
+### Query parameters
+
+Pass query parameters as the second argument of `.get`, `.listPages` and `.listItems`. Arrays are sent in the format that Canvas expects.
+
+```ts
+// GET courses/1/enrollments?role_id[]=3&role_id[]=6&per_page=50
+const { json } = await canvas.get("courses/1/enrollments", {
+  role_id: [3, 6],
+  per_page: 50,
+});
+```
+
+Keys and values are percent-encoded by this library, so pass them unencoded. If you encode them yourself, they will be encoded twice.
+
+> ‼️ **Warning!**
+>
+> The `endpoint` argument is **not** encoded. Never build it from untrusted input without checking the input first. Otherwise, the input can add query parameters such as `as_user_id` or change which resource the request operates on:
+>
+> ```ts
+> // Unsafe: "1/users?as_user_id=2&x=" adds a query parameter
+> canvas.get(`courses/${userInput}/users`);
+>
+> // Safe: the input can only be a number
+> if (!/^\d+$/.test(userInput)) {
+>   throw new Error("Invalid course ID");
+> }
+> canvas.get(`courses/${userInput}/users`);
+> ```
+>
+> `encodeURIComponent` alone is not enough, because it leaves `..` unchanged.
+
 ### Pagination
 
 Use the method `.listPages` to automatically traverse pages.

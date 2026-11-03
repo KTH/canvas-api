@@ -45,6 +45,55 @@ describe("queryParameters", () => {
     const expected = "";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
+
+  it("should not let values inject extra parameters", () => {
+    const input = { search_term: "foo&as_user_id=2" };
+    const expected = "?search_term=foo%26as_user_id%3D2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let array values inject extra parameters", () => {
+    const input = { role: ["3&as_user_id=2", 10] };
+    const expected = "?role[]=3%26as_user_id%3D2&role[]=10";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let keys inject extra parameters", () => {
+    const input = { "a=1&as_user_id": 2 };
+    const expected = "?a%3D1%26as_user_id=2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should encode fragment, percent and space characters", () => {
+    const input = { q: "a#b%20 c" };
+    const expected = "?q=a%23b%2520%20c";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should round-trip special characters as a single parameter", () => {
+    const value = "foo&as_user_id=2#åäö+";
+    const query = stringifyQueryParameters({ search_term: value });
+    const parsed = new URLSearchParams(query);
+    expect([...parsed.entries()]).toEqual([["search_term", value]]);
+  });
+
+  it("should replace lone surrogates instead of throwing", () => {
+    const input = { "\uD800": 1, q: "a\uD83D", role: ["\uDC00"] };
+    const expected = "?%EF%BF%BD=1&q=a%EF%BF%BD&role[]=%EF%BF%BD";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should keep valid surrogate pairs", () => {
+    const input = { q: "😀" };
+    const expected = "?q=%F0%9F%98%80";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should ignore inherited properties", () => {
+    const input = Object.create({ as_user_id: 2 });
+    input.q = "x";
+    expect(stringifyQueryParameters(input)).toEqual("?q=x");
+  });
 });
 
 describe("listItems", () => {
@@ -410,6 +459,110 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     expect(error?.name).toEqual("CanvasApiRequestError");
     expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
     expect(stackRows[1]).toContain(__filename);
+  });
+});
+
+describe("Query parameters in requests", () => {
+  let defaultAgent: Dispatcher;
+  let mockAgent: MockAgent;
+  let mockPool: Interceptable;
+
+  beforeEach(() => {
+    defaultAgent = getGlobalDispatcher();
+    mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+    mockPool = mockAgent.get("https://canvas.local");
+  });
+
+  afterEach(() => {
+    setGlobalDispatcher(defaultAgent);
+  });
+
+  it("appends to a query string in the endpoint", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?per_page=10&search_term=a%26b",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?per_page=10", {
+      search_term: "a&b",
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("appends arrays to a query string in the endpoint", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?include[]=a&role[]=3&role[]=6",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?include[]=a", {
+      role: [3, 6],
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends the parameters when the endpoint has a fragment", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=x", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses#a", { q: "x" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("keeps the query string in the endpoint without parameters", async () => {
+    mockPool
+      .intercept({ path: "/courses?per_page=10", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?per_page=10");
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends a lone surrogate as U+FFFD", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%EF%BF%BD", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses", { q: "a\uD83D" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends encoded parameters with .listPages", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%26b", method: "GET" })
+      .reply(200, "[]");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const pages = await canvas.listPages("courses", { q: "a&b" }).toArray();
+
+    expect(pages).toHaveLength(1);
+  });
+
+  it("sends encoded parameters with .listItems", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%26b", method: "GET" })
+      .reply(200, "[1]");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const items = await canvas.listItems("courses", { q: "a&b" }).toArray();
+
+    expect(items).toEqual([1]);
   });
 });
 

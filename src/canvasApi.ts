@@ -101,27 +101,41 @@ export function getNextUrl(linkHeader: string | string[]) {
 }
 
 /**
+ * Percent-encodes a query parameter key or value. Lone surrogates are replaced
+ * with U+FFFD, because `encodeURIComponent` throws on them
+ */
+function encodeQueryComponent(component: string | number) {
+  return encodeURIComponent(String(component).replace(/\p{Cs}/gu, "�"));
+}
+
+/**
  * Return query parameters in Canvas accepted format (i.e. "bracket" format)
  *
  * Example:
  *
  * ```
- * stringifyQueryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
+ * stringifyQueryParameters({ role: [3, 10] }); // returns "?role[]=3&role[]=10"
  *
+ * ```
+ *
+ * Keys and values are percent-encoded, so they must be passed unencoded:
+ *
+ * ```
+ * stringifyQueryParameters({ q: "a&b=c" }); // returns "?q=a%26b%3Dc"
  * ```
  */
 export function stringifyQueryParameters(parameters: QueryParams) {
   const keyValues: string[] = [];
 
-  for (const key in parameters) {
-    const value = parameters[key];
+  for (const [key, value] of Object.entries(parameters)) {
+    const encodedKey = encodeQueryComponent(key);
 
     if (Array.isArray(value)) {
       for (const v of value) {
-        keyValues.push(`${key}[]=${v}`);
+        keyValues.push(`${encodedKey}[]=${encodeQueryComponent(v)}`);
       }
     } else {
-      keyValues.push(`${key}=${value}`);
+      keyValues.push(`${encodedKey}=${encodeQueryComponent(value)}`);
     }
   }
 
@@ -188,12 +202,19 @@ export class CanvasApi {
       );
     }
 
-    let url = resolvedUrl.toString();
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {
-      url += stringifyQueryParameters(params);
+      const query = stringifyQueryParameters(params);
+
+      if (query) {
+        // The endpoint can already have a query string
+        resolvedUrl.search = resolvedUrl.search
+          ? `${resolvedUrl.search}&${query.slice(1)}`
+          : query;
+      }
     }
+    const url = resolvedUrl.toString();
     const header = {
       authorization: `Bearer ${this.token}`,
       "User-Agent": "@kth/canvas-api",

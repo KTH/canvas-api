@@ -76,6 +76,24 @@ describe("queryParameters", () => {
     const parsed = new URLSearchParams(query);
     expect([...parsed.entries()]).toEqual([["search_term", value]]);
   });
+
+  it("should replace lone surrogates instead of throwing", () => {
+    const input = { "\uD800": 1, q: "a\uD83D", role: ["\uDC00"] };
+    const expected = "?%EF%BF%BD=1&q=a%EF%BF%BD&role[]=%EF%BF%BD";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should keep valid surrogate pairs", () => {
+    const input = { q: "😀" };
+    const expected = "?q=%F0%9F%98%80";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should ignore inherited properties", () => {
+    const input = Object.create({ as_user_id: 2 });
+    input.q = "x";
+    expect(stringifyQueryParameters(input)).toEqual("?q=x");
+  });
 });
 
 describe("listItems", () => {
@@ -442,22 +460,9 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
     expect(stackRows[1]).toContain(__filename);
   });
-
-  it(".get CanvasApiRequestError with invalid Unicode in query parameters", async () => {
-    const canvas = new CanvasApi("https://canvas.local/", "");
-    const error = await canvas
-      .get("call-get", { search_term: "\uD800" }) // Lone surrogate
-      .catch((e) => e);
-
-    const stackRows = error.stack.split("\n");
-    expect(error?.name).toEqual("CanvasApiRequestError");
-    expect(error?.message).toMatch(/invalid Unicode/);
-    expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
-    expect(stackRows[1]).toContain(__filename);
-  });
 });
 
-describe("Query parameters are merged with the endpoint", () => {
+describe("Query parameters in requests", () => {
   let defaultAgent: Dispatcher;
   let mockAgent: MockAgent;
   let mockPool: Interceptable;
@@ -525,6 +530,39 @@ describe("Query parameters are merged with the endpoint", () => {
     const { statusCode } = await canvas.get("courses?per_page=10");
 
     expect(statusCode).toEqual(200);
+  });
+
+  it("sends a lone surrogate as U+FFFD", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%EF%BF%BD", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses", { q: "a\uD83D" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends encoded parameters with .listPages", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%26b", method: "GET" })
+      .reply(200, "[]");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const pages = await canvas.listPages("courses", { q: "a&b" }).toArray();
+
+    expect(pages).toHaveLength(1);
+  });
+
+  it("sends encoded parameters with .listItems", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%26b", method: "GET" })
+      .reply(200, "[1]");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const items = await canvas.listItems("courses", { q: "a&b" }).toArray();
+
+    expect(items).toEqual([1]);
   });
 });
 

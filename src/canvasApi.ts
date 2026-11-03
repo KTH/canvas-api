@@ -101,6 +101,14 @@ export function getNextUrl(linkHeader: string | string[]) {
 }
 
 /**
+ * Percent-encodes a query parameter key or value. Lone surrogates are replaced
+ * with U+FFFD, because `encodeURIComponent` throws on them
+ */
+function encodeQueryComponent(component: string | number) {
+  return encodeURIComponent(String(component).replace(/\p{Cs}/gu, "�"));
+}
+
+/**
  * Return query parameters in Canvas accepted format (i.e. "bracket" format)
  *
  * Example:
@@ -119,16 +127,15 @@ export function getNextUrl(linkHeader: string | string[]) {
 export function stringifyQueryParameters(parameters: QueryParams) {
   const keyValues: string[] = [];
 
-  for (const key in parameters) {
-    const value = parameters[key];
-    const encodedKey = encodeURIComponent(key);
+  for (const [key, value] of Object.entries(parameters)) {
+    const encodedKey = encodeQueryComponent(key);
 
     if (Array.isArray(value)) {
       for (const v of value) {
-        keyValues.push(`${encodedKey}[]=${encodeURIComponent(v)}`);
+        keyValues.push(`${encodedKey}[]=${encodeQueryComponent(v)}`);
       }
     } else {
-      keyValues.push(`${encodedKey}=${encodeURIComponent(value)}`);
+      keyValues.push(`${encodedKey}=${encodeQueryComponent(value)}`);
     }
   }
 
@@ -198,25 +205,13 @@ export class CanvasApi {
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {
-      try {
-        const query = stringifyQueryParameters(params);
+      const query = stringifyQueryParameters(params);
 
-        if (query) {
-          // The endpoint can already have a query string
-          resolvedUrl.search = resolvedUrl.search
-            ? `${resolvedUrl.search}&${query.slice(1)}`
-            : query;
-        }
-      } catch (err) {
-        if (err instanceof URIError) {
-          throw canvasApiErrorDecorator(
-            new CanvasApiRequestError(
-              "the query parameters contain invalid Unicode"
-            ),
-            stackTrace
-          );
-        }
-        throw err;
+      if (query) {
+        // The endpoint can already have a query string
+        resolvedUrl.search = resolvedUrl.search
+          ? `${resolvedUrl.search}&${query.slice(1)}`
+          : query;
       }
     }
     const url = resolvedUrl.toString();

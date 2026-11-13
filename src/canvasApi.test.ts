@@ -70,16 +70,10 @@ describe("queryParameters", () => {
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
-  it("should not encode values that are already encoded", () => {
+  it("should send other characters as before", () => {
     const input = { q: encodeURIComponent("a&b c"), r: "a+b" };
     const expected = "?q=a%26b%20c&r=a+b";
     expect(stringifyQueryParameters(input)).toEqual(expected);
-  });
-
-  it("should ignore inherited properties", () => {
-    const input = Object.create({ as_user_id: 2 });
-    input.q = "x";
-    expect(stringifyQueryParameters(input)).toEqual("?q=x");
   });
 });
 

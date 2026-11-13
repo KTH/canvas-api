@@ -122,7 +122,8 @@ function escapeDelimiters(component: string | number) {
 export function stringifyQueryParameters(parameters: QueryParams) {
   const keyValues: string[] = [];
 
-  for (const [key, value] of Object.entries(parameters)) {
+  for (const key in parameters) {
+    const value = parameters[key];
     const escapedKey = escapeDelimiters(key);
 
     if (Array.isArray(value)) {

@@ -101,12 +101,21 @@ export function getNextUrl(linkHeader: string | string[]) {
 }
 
 /**
+ * Percent-encodes the characters that would end a query parameter key or
+ * value. Other characters are sent as passed, so values that are already
+ * encoded are not encoded twice
+ */
+function escapeDelimiters(component: string | number) {
+  return String(component).replace(/[&;#=]/g, (c) => encodeURIComponent(c));
+}
+
+/**
  * Return query parameters in Canvas accepted format (i.e. "bracket" format)
  *
  * Example:
  *
  * ```
- * stringifyQueryParameters({ role: [3, 10] }); // returns "role[]=3&role[]=10"
+ * stringifyQueryParameters({ role: [3, 10] }); // returns "?role[]=3&role[]=10"
  *
  * ```
  */
@@ -115,13 +124,14 @@ export function stringifyQueryParameters(parameters: QueryParams) {
 
   for (const key in parameters) {
     const value = parameters[key];
+    const escapedKey = escapeDelimiters(key);
 
     if (Array.isArray(value)) {
       for (const v of value) {
-        keyValues.push(`${key}[]=${v}`);
+        keyValues.push(`${escapedKey}[]=${escapeDelimiters(v)}`);
       }
     } else {
-      keyValues.push(`${key}=${value}`);
+      keyValues.push(`${escapedKey}=${escapeDelimiters(value)}`);
     }
   }
 
@@ -188,12 +198,19 @@ export class CanvasApi {
       );
     }
 
-    let url = resolvedUrl.toString();
     const mergedOptions = { ...this.options, ...options };
 
     if (params) {
-      url += stringifyQueryParameters(params);
+      const query = stringifyQueryParameters(params);
+
+      if (query) {
+        // The endpoint can already have a query string
+        resolvedUrl.search = resolvedUrl.search
+          ? `${resolvedUrl.search}&${query.slice(1)}`
+          : query;
+      }
     }
+    const url = resolvedUrl.toString();
     const header = {
       authorization: `Bearer ${this.token}`,
       "User-Agent": "@kth/canvas-api",

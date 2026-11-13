@@ -45,6 +45,36 @@ describe("queryParameters", () => {
     const expected = "";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
+
+  it("should not let values inject extra parameters", () => {
+    const input = { search_term: "foo&as_user_id=2" };
+    const expected = "?search_term=foo%26as_user_id%3D2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let array values inject extra parameters", () => {
+    const input = { role: ["3&as_user_id=2", 10] };
+    const expected = "?role[]=3%26as_user_id%3D2&role[]=10";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should not let keys inject extra parameters", () => {
+    const input = { "a=1&as_user_id": 2 };
+    const expected = "?a%3D1%26as_user_id=2";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should escape semicolons and fragments", () => {
+    const input = { q: "a;as_user_id=2#b" };
+    const expected = "?q=a%3Bas_user_id%3D2%23b";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
+  it("should send other characters as before", () => {
+    const input = { q: encodeURIComponent("a&b c"), r: "a+b", s: "100%" };
+    const expected = "?q=a%26b%20c&r=a+b&s=100%";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
 });
 
 describe("listItems", () => {
@@ -410,6 +440,72 @@ describe("Custom errors shouldn't include CanvasApi in stack trace", () => {
     expect(error?.name).toEqual("CanvasApiRequestError");
     expect(stackRows[0]).toContain(`${error.name}: ${error.message}`);
     expect(stackRows[1]).toContain(__filename);
+  });
+});
+
+describe("Query parameters in requests", () => {
+  let defaultAgent: Dispatcher;
+  let mockAgent: MockAgent;
+  let mockPool: Interceptable;
+
+  beforeEach(() => {
+    defaultAgent = getGlobalDispatcher();
+    mockAgent = new MockAgent();
+    setGlobalDispatcher(mockAgent);
+    mockPool = mockAgent.get("https://canvas.local");
+  });
+
+  afterEach(() => {
+    setGlobalDispatcher(defaultAgent);
+  });
+
+  it("does not let values inject extra parameters", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?search_term=foo%26as_user_id%3D2",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses", {
+      search_term: "foo&as_user_id=2",
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("appends to a query string in the endpoint", async () => {
+    mockPool
+      .intercept({ path: "/courses?per_page=10&q=x", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses?per_page=10", { q: "x" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends the parameters when the endpoint has a fragment", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=x", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses#a", { q: "x" });
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("sends escaped parameters with .listItems", async () => {
+    mockPool
+      .intercept({ path: "/courses?q=a%26b", method: "GET" })
+      .reply(200, "[1]");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const items = await canvas.listItems("courses", { q: "a&b" }).toArray();
+
+    expect(items).toEqual([1]);
   });
 });
 

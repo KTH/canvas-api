@@ -71,8 +71,8 @@ describe("queryParameters", () => {
   });
 
   it("should send other characters as before", () => {
-    const input = { q: encodeURIComponent("a&b c"), r: "a+b" };
-    const expected = "?q=a%26b%20c&r=a+b";
+    const input = { q: encodeURIComponent("a&b c"), r: "a+b", s: "100%" };
+    const expected = "?q=a%26b%20c&r=a+b&s=100%";
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 });

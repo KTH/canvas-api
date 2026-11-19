@@ -138,6 +138,21 @@ export function stringifyQueryParameters(parameters: QueryParams) {
   return keyValues.length === 0 ? "" : "?" + keyValues.join("&");
 }
 
+/** True if the endpoint path has a "." or ".." segment, as the URL parser reads it */
+function hasDotSegment(endpoint: string) {
+  // Same trimming and tab/newline removal as the URL parser
+  const path = endpoint
+    // eslint-disable-next-line no-control-regex
+    .replace(/^[\u0000- ]+|[\u0000- ]+$/g, "")
+    .replace(/[\t\n\r]/g, "")
+    .split(/[?#]/, 1)[0];
+
+  return path.split(/[\\/]/).some((segment) => {
+    const decoded = segment.replace(/%2e/gi, ".");
+    return decoded === "." || decoded === "..";
+  });
+}
+
 let requestWithRateLimitThrottling:
   | ReturnType<typeof rateLimitedRequestFactory>
   | undefined = undefined;
@@ -193,6 +208,24 @@ export class CanvasApi {
       throw canvasApiErrorDecorator(
         new CanvasApiRequestError(
           `the endpoint resolves to "${resolvedUrl.origin}", which is not the configured Canvas origin "${this.apiUrl.origin}"`
+        ),
+        stackTrace
+      );
+    }
+
+    if (hasDotSegment(endpoint)) {
+      throw canvasApiErrorDecorator(
+        new CanvasApiRequestError(
+          `the endpoint "${endpoint}" contains "." or ".." path segments, which are not allowed`
+        ),
+        stackTrace
+      );
+    }
+
+    if (!resolvedUrl.pathname.startsWith(this.apiUrl.pathname)) {
+      throw canvasApiErrorDecorator(
+        new CanvasApiRequestError(
+          `the endpoint resolves to "${resolvedUrl.pathname}", which is outside the configured Canvas API path "${this.apiUrl.pathname}"`
         ),
         stackTrace
       );

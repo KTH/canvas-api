@@ -144,6 +144,20 @@ const { json } = client.get("accounts/1");
 const parsed = accountSchema.parse(json);
 ```
 
+### Endpoints
+
+Endpoints are resolved relative to the URL passed to `CanvasApi`. Endpoints that leave that path, either with `.` or `..` segments or with a leading `/`, throw a `CanvasApiRequestError`.
+
+`?` and `#` in an endpoint are not checked. If you put user input in an endpoint, validate it first:
+
+```ts
+if (!/^\d+$/.test(courseId)) {
+  throw new Error("Invalid course id");
+}
+
+const { json } = await canvas.get(`courses/${courseId}/users`);
+```
+
 ### Error handling
 
 This library returns instances of `CanvasApiError`. Check the [file `src/canvasApiError.ts`](./src/canvasApiError.ts) to see all the error classes that this library throws

@@ -86,20 +86,7 @@ Keys and values are percent-encoded by this library, so pass them unencoded. If 
 
 > ‼️ **Warning!**
 >
-> The `endpoint` argument is **not** encoded. Never build it from untrusted input without checking the input first. Otherwise, the input can add query parameters such as `as_user_id` or change which resource the request operates on:
->
-> ```ts
-> // Unsafe: "1/users?as_user_id=2&x=" adds a query parameter
-> canvas.get(`courses/${userInput}/users`);
->
-> // Safe: the input can only be a number
-> if (!/^\d+$/.test(userInput)) {
->   throw new Error("Invalid course ID");
-> }
-> canvas.get(`courses/${userInput}/users`);
-> ```
->
-> `encodeURIComponent` alone is not enough, because it leaves `..` unchanged.
+> The `endpoint` argument is **not** encoded. User input in an endpoint can add query parameters such as `as_user_id`, so validate it first, as described in [Endpoints](#endpoints).
 
 ### Pagination
 
@@ -173,6 +160,20 @@ const accountSchema = z.object({
 
 const { json } = client.get("accounts/1");
 const parsed = accountSchema.parse(json);
+```
+
+### Endpoints
+
+Endpoints are resolved relative to the URL passed to `CanvasApi`. Endpoints that leave that path, either with `.` or `..` segments or with a leading `/`, throw a `CanvasApiRequestError`.
+
+`?` and `#` in an endpoint are not checked. If you put user input in an endpoint, validate it first:
+
+```ts
+if (!/^\d+$/.test(courseId)) {
+  throw new Error("Invalid course id");
+}
+
+const { json } = await canvas.get(`courses/${courseId}/users`);
 ```
 
 ### Error handling

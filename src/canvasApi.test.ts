@@ -64,6 +64,12 @@ describe("queryParameters", () => {
     expect(stringifyQueryParameters(input)).toEqual(expected);
   });
 
+  it("should encode semicolons", () => {
+    const input = { q: "a;as_user_id=2#b" };
+    const expected = "?q=a%3Bas_user_id%3D2%23b";
+    expect(stringifyQueryParameters(input)).toEqual(expected);
+  });
+
   it("should encode fragment, percent and space characters", () => {
     const input = { q: "a#b%20 c" };
     const expected = "?q=a%23b%2520%20c";
@@ -478,6 +484,22 @@ describe("Query parameters in requests", () => {
     setGlobalDispatcher(defaultAgent);
   });
 
+  it("does not let values inject extra parameters", async () => {
+    mockPool
+      .intercept({
+        path: "/courses?search_term=foo%26as_user_id%3D2",
+        method: "GET",
+      })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi("https://canvas.local/", "");
+    const { statusCode } = await canvas.get("courses", {
+      search_term: "foo&as_user_id=2",
+    });
+
+    expect(statusCode).toEqual(200);
+  });
+
   it("appends to a query string in the endpoint", async () => {
     mockPool
       .intercept({
@@ -665,6 +687,140 @@ describe("Requests are only sent to the configured Canvas origin", () => {
 
     expect(error?.name).toEqual("CanvasApiRequestError");
     expect(error?.message).toMatch(/not the configured Canvas origin/);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+});
+
+// Guards against path traversal to other Canvas endpoints
+describe("Requests stay under the configured Canvas API path", () => {
+  let mockAgent: MockAgent;
+  let canvasPool: Interceptable;
+  const apiUrl = "https://canvas.local/api/v1/";
+
+  beforeEach(() => {
+    mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    setGlobalDispatcher(mockAgent);
+
+    canvasPool = mockAgent.get("https://canvas.local");
+  });
+
+  it("sends a normal endpoint under the API path", async () => {
+    canvasPool
+      .intercept({ path: "/api/v1/courses/1/users", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const { statusCode } = await canvas.get("courses/1/users");
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it("allows segments that only contain dots among other characters", async () => {
+    canvasPool
+      .intercept({ path: "/api/v1/files/a..b/.c/...", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const { statusCode } = await canvas.get("files/a..b/.c/...");
+
+    expect(statusCode).toEqual(200);
+  });
+
+  it.each([
+    ["above the API path", "courses/1/../../../login/x"],
+    ["inside the API path", "courses/../accounts/1/users"],
+    ["percent-encoded", "courses/%2e%2E/accounts/1/users"],
+    ["half encoded", "courses/.%2e/accounts/1/users"],
+    ["with backslashes", "courses\\..\\accounts\\1\\users"],
+    ["split by a newline", "courses/.\n./accounts/1/users"],
+    ["with a trailing space", "courses/.. "],
+    ["with a trailing control character", "courses/..\u0000"],
+    ["with leading control characters", "\u0001\u001f../accounts"],
+    ["single dot", "courses/./1"],
+    ["before a query string", "courses/..?x=1"],
+  ])("refuses dot segments %s", async (_, endpoint) => {
+    canvasPool.intercept({ path: /.*/, method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const error = await canvas.get(endpoint).catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/"\." or "\.\." path segments/);
+    expect(error?.stack).toMatch(/canvasApi\.test\.ts/g);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses an endpoint with a leading slash", async () => {
+    canvasPool.intercept({ path: "/anything", method: "GET" }).reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const error = await canvas.get("/anything").catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/outside the configured Canvas API path/);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses an endpoint that only shares a prefix with the API path", async () => {
+    canvasPool
+      .intercept({ path: "/api/v10/courses", method: "GET" })
+      .reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const error = await canvas.get("/api/v10/courses").catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/outside the configured Canvas API path/);
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("refuses dot segments in writes with .request", async () => {
+    canvasPool.intercept({ path: /.*/, method: "POST" }).reply(200, "{}");
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const error = await canvas
+      .request("courses/../accounts/1/users?/enrollments", "POST", {})
+      .catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(mockAgent.pendingInterceptors()).toHaveLength(1);
+  });
+
+  it("follows an absolute `next` link under the API path", async () => {
+    canvasPool
+      .intercept({ path: "/api/v1/courses?page=1", method: "GET" })
+      .reply(200, [1, 2], {
+        headers: {
+          link: '<https://canvas.local/api/v1/courses?page=2>; rel="next"',
+        },
+      });
+    canvasPool
+      .intercept({ path: "/api/v1/courses?page=2", method: "GET" })
+      .reply(200, [3]);
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const items = await canvas.listItems("courses", { page: 1 }).toArray();
+
+    expect(items).toEqual([1, 2, 3]);
+  });
+
+  it("refuses to follow a `next` link outside the API path", async () => {
+    canvasPool
+      .intercept({ path: "/api/v1/courses", method: "GET" })
+      .reply(200, [1, 2], {
+        headers: { link: '<https://canvas.local/login/x>; rel="next"' },
+      });
+    canvasPool.intercept({ path: "/login/x", method: "GET" }).reply(200, [3]);
+
+    const canvas = new CanvasApi(apiUrl, "");
+    const error = await canvas
+      .listItems("courses")
+      .toArray()
+      .catch((e) => e);
+
+    expect(error?.name).toEqual("CanvasApiRequestError");
+    expect(error?.message).toMatch(/outside the configured Canvas API path/);
     expect(mockAgent.pendingInterceptors()).toHaveLength(1);
   });
 });

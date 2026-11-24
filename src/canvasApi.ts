@@ -101,12 +101,11 @@ export function getNextUrl(linkHeader: string | string[]) {
 }
 
 /**
- * Percent-encodes the characters that would end a query parameter key or
- * value. Other characters are sent as passed, so values that are already
- * encoded are not encoded twice
+ * Percent-encodes a query parameter key or value. Lone surrogates are replaced
+ * with U+FFFD, because `encodeURIComponent` throws on them
  */
-function escapeDelimiters(component: string | number) {
-  return String(component).replace(/[&;#=]/g, (c) => encodeURIComponent(c));
+function encodeQueryComponent(component: string | number) {
+  return encodeURIComponent(String(component).replace(/\p{Cs}/gu, "�"));
 }
 
 /**
@@ -118,20 +117,25 @@ function escapeDelimiters(component: string | number) {
  * stringifyQueryParameters({ role: [3, 10] }); // returns "?role[]=3&role[]=10"
  *
  * ```
+ *
+ * Keys and values are percent-encoded, so they must be passed unencoded:
+ *
+ * ```
+ * stringifyQueryParameters({ q: "a&b=c" }); // returns "?q=a%26b%3Dc"
+ * ```
  */
 export function stringifyQueryParameters(parameters: QueryParams) {
   const keyValues: string[] = [];
 
-  for (const key in parameters) {
-    const value = parameters[key];
-    const escapedKey = escapeDelimiters(key);
+  for (const [key, value] of Object.entries(parameters)) {
+    const encodedKey = encodeQueryComponent(key);
 
     if (Array.isArray(value)) {
       for (const v of value) {
-        keyValues.push(`${escapedKey}[]=${escapeDelimiters(v)}`);
+        keyValues.push(`${encodedKey}[]=${encodeQueryComponent(v)}`);
       }
     } else {
-      keyValues.push(`${escapedKey}=${escapeDelimiters(value)}`);
+      keyValues.push(`${encodedKey}=${encodeQueryComponent(value)}`);
     }
   }
 

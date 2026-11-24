@@ -57,4 +57,24 @@ describe("GET requests with query parameters", () => {
     expect(uniqueRoles.has(3)).toBeTruthy();
     expect(uniqueRoles.has(6)).toBeTruthy();
   }, 10000);
+
+  // Keys are sent percent-encoded (`role_id%5B%5D=3`). If Canvas did not decode
+  // them, it would ignore the filter and also return enrollments with other roles
+  it.each([3, 6])(
+    "should decode a key with brackets (role_id[]=%i)",
+    async (roleId) => {
+      const client = new CanvasApi(
+        process.env.CANVAS_API_URL!,
+        process.env.CANVAS_API_TOKEN!
+      );
+
+      const enrollments = await client
+        .get("courses/1/enrollments", { "role_id[]": roleId, per_page: 50 })
+        .then((r) => enrollmentsSchema.parse(r.json));
+
+      expect(enrollments.length).toBeGreaterThan(0);
+      expect(enrollments.every((e) => e.role_id === roleId)).toBeTruthy();
+    },
+    10000
+  );
 });
